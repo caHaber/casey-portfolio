@@ -33,7 +33,8 @@
 	] as const;
 
 	const POSITION_NOISE = 5; // pixels of random offset for organic look
-	const IDLE_ALPHA = 10 / 255; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
+	const IDLE_ALPHA = 2 / 255; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
+	const ROTATION_SPEED = 0.00015; // radians per ms (slow drift)
 
 	interface Particle {
 		homeX: number;
@@ -50,6 +51,7 @@
 		cr: number; // 0–1
 		cg: number;
 		cb: number;
+		twinklePhase: number; // random 0..2π for unsynced individual twinkle
 	}
 
 	function easeOutCubic(x: number): number {
@@ -80,7 +82,8 @@
 			flyDuration,
 			cr: r / 255,
 			cg: g / 255,
-			cb: b / 255
+			cb: b / 255,
+			twinklePhase: Math.random() * 2 * Math.PI
 		};
 	}
 
@@ -131,10 +134,11 @@
 		varying float vRotation;
 		uniform float uPointSizeMin;
 		uniform float uPointSizeMax;
+		uniform float uRotationTime;
 
 		void main() {
 			vColor = vec4(particleColor, alpha);
-			vRotation = rotation;
+			vRotation = rotation + uRotationTime;
 			vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 			pos.y = -pos.y;
 			gl_Position = pos;
@@ -154,6 +158,7 @@
 			uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
 			// Slightly elliptical so per-point rotation is visible
 			float d = length(uv / vec2(1.25, 0.75));
+			// float d
 			if (d > 0.5) discard;
 			gl_FragColor = vColor;
 		}
@@ -166,7 +171,8 @@
 		depthWrite: false,
 		uniforms: {
 			uPointSizeMin: { value: 1.0 },
-			uPointSizeMax: { value: 10.0 }
+			uPointSizeMax: { value: 10.0 },
+			uRotationTime: { value: 0.0 }
 		}
 	});
 
@@ -320,8 +326,8 @@
 		if (caseyParticles.length === 0) return;
 
 		const now = performance.now();
-		const W = size.current.width;
-		// const H = size.current.height;
+
+		material.uniforms.uRotationTime.value = now * ROTATION_SPEED;
 
 		// Mouse trigger
 		for (const p of caseyParticles) {
@@ -401,17 +407,19 @@
 				particleColors[idx * 3] = p.cr;
 				particleColors[idx * 3 + 1] = p.cg;
 				particleColors[idx * 3 + 2] = p.cb;
-				if (t < 1.0) {
-					alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
-				} else {
-					const pulse = 0.75 + 0.25 * Math.sin(now / 700 + (p.targetX / W) * Math.PI * 4);
-					alpha = pulse;
-				}
+				// if (t < 1.0) {
+				// 	alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
+				// } else {
+					// Slow individual twinkle: each particle has its own phase, ~8s period
+					const twinkle = 0.5 + 0.5 * Math.sin(now * 0.0008 + p.twinklePhase);
+					alpha = twinkle / 10;
+				// }
 			}
 			positions[idx * 3] = px + p.offsetX;
 			positions[idx * 3 + 1] = py + p.offsetY;
 			positions[idx * 3 + 2] = 0;
 			alphas[idx] = alpha;
+			rotations[idx] = rotations[idx] + 1;
 			idx++;
 		}
 		for (const group of navParticles) {
@@ -435,12 +443,13 @@
 					particleColors[idx * 3] = p.cr;
 					particleColors[idx * 3 + 1] = p.cg;
 					particleColors[idx * 3 + 2] = p.cb;
-					if (t < 1.0) {
-						alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
-					} else {
-						const pulse = 0.75 + 0.25 * Math.sin(now / 700 + (p.targetX / W) * Math.PI * 4);
-						alpha = pulse;
-					}
+					// if (t < 1.0) {
+					// 	alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
+					// } else {
+						// Slow individual twinkle: each particle has its own phase, ~8s period
+						const twinkle = 0.5 + 0.5 * Math.sin(now * 0.0008 + p.twinklePhase);
+						alpha = twinkle / 10;
+					// }
 				}
 				positions[idx * 3] = px + p.offsetX;
 				positions[idx * 3 + 1] = py + p.offsetY;
