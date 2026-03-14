@@ -412,7 +412,7 @@
 				// } else {
 					// Slow individual twinkle: each particle has its own phase, ~8s period
 					const twinkle = 0.5 + 0.5 * Math.sin(now * 0.0008 + p.twinklePhase);
-					alpha = twinkle / 10;
+					alpha = twinkle / 20;
 				// }
 			}
 			positions[idx * 3] = px + p.offsetX;
@@ -448,7 +448,8 @@
 					// } else {
 						// Slow individual twinkle: each particle has its own phase, ~8s period
 						const twinkle = 0.5 + 0.5 * Math.sin(now * 0.0008 + p.twinklePhase);
-						alpha = twinkle / 10;
+						// Twinkle offset
+						alpha = twinkle / 20;
 					// }
 				}
 				positions[idx * 3] = px + p.offsetX;
