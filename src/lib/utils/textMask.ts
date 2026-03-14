@@ -64,9 +64,15 @@ export function getTextPixels(
 	ctx.fillStyle = '#000';
 	ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-	// Size the text to fill ~65% of canvas width
-	const fontSize = Math.floor((canvasWidth * 0.65) / (text.length * 0.55));
+	// Size the text so it fits within ~65% of canvas width (measureText accounts for weight 900)
+	const maxTextWidth = canvasWidth * 0.65;
+	let fontSize = Math.floor((canvasWidth * 0.65) / (text.length * 0.55));
 	ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
+	const measured = ctx.measureText(text).width;
+	if (measured > maxTextWidth && measured > 0) {
+		fontSize = Math.floor((fontSize * maxTextWidth) / measured);
+		ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
+	}
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
 	ctx.fillStyle = '#fff';

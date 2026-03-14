@@ -4,13 +4,15 @@
 
 	interface Props {
 		onselectednav?: (i: number | null) => void;
+		/** Size of each particle in pixels (1 = single pixel). Default 1. */
+		pixelSize?: number;
 	}
 
-	const { onselectednav }: Props = $props();
+	const { onselectednav, pixelSize = 1 }: Props = $props();
 
 	// ── Constants ──
-	const CASEY_N = 20000;
-	const NAV_N = 3000;
+	const CASEY_N = 300000;
+	const NAV_N = 30000;
 	const MOUSE_RADIUS = 130;
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
@@ -173,17 +175,27 @@
 		const buf32 = new Uint32Array(buf.buffer);
 		const BG32 = 0xff0a0a0a;
 
+		const size = Math.max(1, Math.floor(pixelSize));
+		const half = Math.floor(size / 2);
+
+		function setPixel(x: number, y: number, r: number, g: number, b: number, a: number) {
+			if (x < 0 || x >= W || y < 0 || y >= H) return;
+			const idx = (y * W + x) * 4;
+			buf[idx] = r;
+			buf[idx + 1] = g;
+			buf[idx + 2] = b;
+			buf[idx + 3] = a;
+		}
+
 		function drawParticle(p: Particle, now: number) {
 			if (!p.triggered) {
 				// Idle: dim dot at home position
 				const px = p.homeX | 0;
 				const py = p.homeY | 0;
-				if (px >= 0 && px < W && py >= 0 && py < H) {
-					const idx = (py * W + px) * 4;
-					buf[idx] = 96;
-					buf[idx + 1] = 128;
-					buf[idx + 2] = 192;
-					buf[idx + 3] = 40;
+				for (let dy = -half; dy <= half; dy++) {
+					for (let dx = -half; dx <= half; dx++) {
+						setPixel(px + dx, py + dy, 96, 128, 192, 40);
+					}
 				}
 				return;
 			}
@@ -197,7 +209,7 @@
 			p.x = px;
 			p.y = py;
 
-			if (px < 0 || px >= W || py < 0 || py >= H) return;
+			if (px < -half || px >= W + half || py < -half || py >= H + half) return;
 
 			let alpha: number;
 			if (t < 1.0) {
@@ -207,11 +219,11 @@
 				alpha = (pulse * 255) | 0;
 			}
 
-			const idx = (py * W + px) * 4;
-			buf[idx] = p.cr;
-			buf[idx + 1] = p.cg;
-			buf[idx + 2] = p.cb;
-			buf[idx + 3] = alpha;
+			for (let dy = -half; dy <= half; dy++) {
+				for (let dx = -half; dx <= half; dx++) {
+					setPixel(px + dx, py + dy, p.cr, p.cg, p.cb, alpha);
+				}
+			}
 		}
 
 		let rafId: number;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import SquareGrid from '$lib/components/SquareGrid.svelte';
+	import { navState } from '$lib/stores/nav.svelte';
 
 	const navContent = [
 		{
@@ -27,21 +27,17 @@
 			voluptatem sequi nesciunt.`
 		}
 	];
-
-	let selectedNav = $state<number | null>(null);
 </script>
 
 <svelte:head>
 	<title>Casey</title>
 </svelte:head>
 
-<SquareGrid onselectednav={(i) => { selectedNav = i; }} />
-
-{#if selectedNav !== null}
-	{#key selectedNav}
+{#if navState.selectedIndex !== null}
+	{#key navState.selectedIndex}
 		<div class="content-overlay">
-			<p class="content-label">{navContent[selectedNav].label}</p>
-			<p class="content-body">{navContent[selectedNav].body}</p>
+			<p class="content-label">{navContent[navState.selectedIndex].label}</p>
+			<p class="content-body">{navContent[navState.selectedIndex].body}</p>
 		</div>
 	{/key}
 {/if}
