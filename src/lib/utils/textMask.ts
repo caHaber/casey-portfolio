@@ -4,6 +4,48 @@ interface Point {
 }
 
 /**
+ * Rasterizes `text` centered at (centerX, centerY) with an explicit fontSize
+ * and returns up to `maxSamples` pixel coordinates inside the text glyphs.
+ */
+export function getTextPixelsAt(
+	text: string,
+	centerX: number,
+	centerY: number,
+	fontSize: number,
+	canvasWidth: number,
+	canvasHeight: number,
+	maxSamples = 3000
+): Point[] {
+	const canvas = document.createElement('canvas');
+	canvas.width = canvasWidth;
+	canvas.height = canvasHeight;
+	const ctx = canvas.getContext('2d')!;
+
+	ctx.fillStyle = '#000';
+	ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+	ctx.font = `100 ${fontSize}px system-ui, -apple-system, sans-serif`;
+	ctx.textAlign = 'center';
+	ctx.textBaseline = 'middle';
+	ctx.fillStyle = '#fff';
+	ctx.fillText(text, centerX, centerY);
+
+	const { data } = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+	const pixels: Point[] = [];
+
+	for (let y = 0; y < canvasHeight; y++) {
+		for (let x = 0; x < canvasWidth; x++) {
+			if (data[(y * canvasWidth + x) * 4] > 128) {
+				pixels.push({ x, y });
+			}
+		}
+	}
+
+	if (pixels.length <= maxSamples) return pixels;
+	const step = pixels.length / maxSamples;
+	return Array.from({ length: maxSamples }, (_, i) => pixels[Math.floor(i * step)]);
+}
+
+/**
  * Rasterizes `text` on a hidden canvas and returns up to `maxSamples`
  * pixel coordinates that fall inside the text glyphs.
  */

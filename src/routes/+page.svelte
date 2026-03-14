@@ -1,54 +1,88 @@
 <script lang="ts">
 	import SquareGrid from '$lib/components/SquareGrid.svelte';
-	import FloatingNav from '$lib/components/FloatingNav.svelte';
 
-	const navLinks = [
-		{ label: 'Projects', href: '/projects' },
-		{ label: 'Writing', href: '/writing' },
-		{ label: 'About', href: '/about' }
+	const navContent = [
+		{
+			label: 'Projects',
+			body: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque vehicula sapien nec
+			turpis dictum, at facilisis eros tincidunt. Praesent commodo, nisl ac sodales posuere,
+			metus neque ornare nisi, nec hendrerit libero felis in ligula. Curabitur euismod metus
+			at dui laoreet, vel commodo velit posuere. Sed vel tincidunt orci. Integer pharetra
+			scelerisque nulla, et placerat quam condimentum ac.`
+		},
+		{
+			label: 'Writing',
+			body: `Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis
+			egestas. Nulla facilisi. Donec sollicitudin molestie malesuada. Vivamus magna. Fusce
+			risus nisl, viverra et, tempor et, pretium in, sapien. Donec volutpat ligula vel
+			sapien posuere faucibus. Cras sagittis ipsum nec lacus semper, non ultricies lectus
+			imperdiet. Suspendisse viverra diam nec metus efficitur lacinia.`
+		},
+		{
+			label: 'About',
+			body: `Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque
+			laudantium, totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi
+			architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas
+			sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione
+			voluptatem sequi nesciunt.`
+		}
 	];
+
+	let selectedNav = $state<number | null>(null);
 </script>
 
 <svelte:head>
 	<title>Casey</title>
 </svelte:head>
 
-<SquareGrid />
+<SquareGrid onselectednav={(i) => { selectedNav = i; }} />
 
-<div class="overlay">
-	<FloatingNav links={navLinks} />
-	<p class="bio">Software engineer, designer, and builder of things.</p>
-</div>
+{#if selectedNav !== null}
+	{#key selectedNav}
+		<div class="content-overlay">
+			<p class="content-label">{navContent[selectedNav].label}</p>
+			<p class="content-body">{navContent[selectedNav].body}</p>
+		</div>
+	{/key}
+{/if}
 
 <style>
-	.overlay {
+	.content-overlay {
 		position: fixed;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.5rem;
-		padding: 3rem 2rem;
-		animation: fade-in 0.6s ease forwards;
+		top: 58%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: min(560px, 80vw);
+		text-align: center;
+		pointer-events: none;
+		animation: fade-up 0.5s ease forwards;
 	}
 
-	@keyframes fade-in {
+	@keyframes fade-up {
 		from {
 			opacity: 0;
+			transform: translate(-50%, calc(-50% + 12px));
 		}
 		to {
 			opacity: 1;
+			transform: translate(-50%, -50%);
 		}
 	}
 
-	.bio {
-		color: rgba(255, 255, 255, 0.5);
-		font-size: 0.95rem;
-		letter-spacing: 0.04em;
-		text-align: center;
-		max-width: 40ch;
-		line-height: 1.7;
+	.content-label {
+		color: rgba(255, 255, 255, 0.35);
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
+		margin: 0 0 1rem;
+	}
+
+	.content-body {
+		color: rgba(255, 255, 255, 0.55);
+		font-size: 0.9rem;
+		line-height: 1.85;
+		letter-spacing: 0.02em;
+		margin: 0;
 	}
 </style>
