@@ -34,7 +34,8 @@
 
 	const POSITION_NOISE = 5; // pixels of random offset for organic look
 	const IDLE_ALPHA = 2 / 255; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
-	const ROTATION_SPEED = 0.00015; // radians per ms (slow drift)
+	const ROTATION_SPEED = 0.00045; // radians per ms (more noticeable drift)
+	const SIZE_PULSE_SPEED = 0.0012; // rad/ms for individual grow/shrink (~5s period)
 
 	interface Particle {
 		homeX: number;
@@ -111,6 +112,7 @@
 
 	const pointSizeScales = new Float32Array(TOTAL_N);
 	const rotations = new Float32Array(TOTAL_N);
+	const sizePhases = new Float32Array(TOTAL_N);
 
 	const geometry = new BufferGeometry();
 	const posAttr = new BufferAttribute(positions, 3);
@@ -118,11 +120,13 @@
 	const alphaAttr = new BufferAttribute(alphas, 1);
 	const pointSizeAttr = new BufferAttribute(pointSizeScales, 1);
 	const rotationAttr = new BufferAttribute(rotations, 1);
+	const sizePhaseAttr = new BufferAttribute(sizePhases, 1);
 	geometry.setAttribute('position', posAttr);
 	geometry.setAttribute('particleColor', colorAttr);
 	geometry.setAttribute('alpha', alphaAttr);
 	geometry.setAttribute('pointSizeScale', pointSizeAttr);
 	geometry.setAttribute('rotation', rotationAttr);
+	geometry.setAttribute('sizePhase', sizePhaseAttr);
 	geometry.setDrawRange(0, 0); // nothing renders until initialized
 
 	const vertexShader = /* glsl */ `
@@ -130,11 +134,13 @@
 		attribute vec3 particleColor;
 		attribute float pointSizeScale;
 		attribute float rotation;
+		attribute float sizePhase;
 		varying vec4 vColor;
 		varying float vRotation;
 		uniform float uPointSizeMin;
 		uniform float uPointSizeMax;
 		uniform float uRotationTime;
+		uniform float uSizeTime;
 
 		void main() {
 			vColor = vec4(particleColor, alpha);
@@ -142,8 +148,9 @@
 			vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 			pos.y = -pos.y;
 			gl_Position = pos;
-			float size = uPointSizeMin + pointSizeScale * (uPointSizeMax - uPointSizeMin);
-			gl_PointSize = size;
+			float baseSize = uPointSizeMin + pointSizeScale * (uPointSizeMax - uPointSizeMin);
+			float sizeAnim = 0.5 + 0.5 * sin(uSizeTime + sizePhase);
+			gl_PointSize = baseSize * sizeAnim;
 		}
 	`;
 
@@ -156,10 +163,11 @@
 			float c = cos(-vRotation);
 			float s = sin(-vRotation);
 			uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
-			// Slightly elliptical so per-point rotation is visible
-			float d = length(uv / vec2(1.25, 0.75));
-			// float d
-			if (d > 0.5) discard;
+			// Rounded square: half-size 0.5, corner radius 0.18
+			float cornerRadius = 0.18;
+			vec2 d = abs(uv) - (0.5 - cornerRadius);
+			float sdf = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - cornerRadius;
+			if (sdf > 0.0) discard;
 			gl_FragColor = vColor;
 		}
 	`;
@@ -170,9 +178,10 @@
 		transparent: true,
 		depthWrite: false,
 		uniforms: {
-			uPointSizeMin: { value: 1.0 },
-			uPointSizeMax: { value: 10.0 },
-			uRotationTime: { value: 0.0 }
+			uPointSizeMin: { value: 2.0 },
+			uPointSizeMax: { value: 14.0 },
+			uRotationTime: { value: 0.0 },
+			uSizeTime: { value: 0.0 }
 		}
 	});
 
@@ -296,6 +305,7 @@
 			alphas[idx] = IDLE_ALPHA;
 			pointSizeScales[idx] = Math.random();
 			rotations[idx] = Math.random() * 6.28318530718;
+			sizePhases[idx] = Math.random() * 6.28318530718;
 			idx++;
 		}
 		for (const group of navParticles) {
@@ -309,6 +319,7 @@
 				alphas[idx] = IDLE_ALPHA;
 				pointSizeScales[idx] = Math.random();
 				rotations[idx] = Math.random() * 6.28318530718;
+				sizePhases[idx] = Math.random() * 6.28318530718;
 				idx++;
 			}
 		}
@@ -318,6 +329,7 @@
 		alphaAttr.needsUpdate = true;
 		pointSizeAttr.needsUpdate = true;
 		rotationAttr.needsUpdate = true;
+		sizePhaseAttr.needsUpdate = true;
 		geometry.setDrawRange(0, TOTAL_N);
 	});
 
@@ -328,6 +340,7 @@
 		const now = performance.now();
 
 		material.uniforms.uRotationTime.value = now * ROTATION_SPEED;
+		material.uniforms.uSizeTime.value = now * SIZE_PULSE_SPEED;
 
 		// Mouse trigger
 		for (const p of caseyParticles) {
@@ -410,9 +423,9 @@
 				// if (t < 1.0) {
 				// 	alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
 				// } else {
-					// Slow individual twinkle: each particle has its own phase, ~8s period
-					const twinkle = 0.5 + 0.5 * Math.sin(now * 0.0008 + p.twinklePhase);
-					alpha = twinkle / 20;
+					// Individual twinkle: wider range and slightly faster so it’s more noticeable
+					const twinkle = 0.3 + 0.7 * Math.sin(now * 0.0012 + p.twinklePhase);
+					alpha = twinkle * 0.4;
 				// }
 			}
 			positions[idx * 3] = px + p.offsetX;
@@ -446,10 +459,9 @@
 					// if (t < 1.0) {
 					// 	alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
 					// } else {
-						// Slow individual twinkle: each particle has its own phase, ~8s period
-						const twinkle = 0.5 + 0.5 * Math.sin(now * 0.0008 + p.twinklePhase);
-						// Twinkle offset
-						alpha = twinkle / 20;
+						// Individual twinkle: wider range and slightly faster so it’s more noticeable
+						const twinkle = 0.3 + 0.7 * Math.sin(now * 0.0012 + p.twinklePhase);
+						alpha = twinkle * 0.4;
 					// }
 				}
 				positions[idx * 3] = px + p.offsetX;
