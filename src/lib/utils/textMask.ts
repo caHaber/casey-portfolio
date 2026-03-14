@@ -1,21 +1,45 @@
-interface Point {
+export interface Point {
 	x: number;
 	y: number;
 }
 
+export interface TextRasterOptions {
+	/** Text to draw */
+	text: string;
+	canvasWidth: number;
+	canvasHeight: number;
+	/** Center X in pixels */
+	centerX: number;
+	/** Center Y in pixels */
+	centerY: number;
+	/** Font size; if omitted, auto-sized to fit widthFrac of canvas width */
+	fontSize?: number;
+	/** When fontSize is omitted, text width target as fraction of canvas (default 0.65) */
+	widthFrac?: number;
+	/** Font weight: CSS value or number (default 100) */
+	fontWeight?: string | number;
+	/** Max pixel samples to return (default 30000) */
+	maxSamples?: number;
+}
+
+const DEFAULT_FONT = 'system-ui, -apple-system, sans-serif';
+
 /**
- * Rasterizes `text` centered at (centerX, centerY) with an explicit fontSize
- * and returns up to `maxSamples` pixel coordinates inside the text glyphs.
+ * Rasterizes text at the given position and returns pixel coordinates inside the glyphs.
+ * Single entry point for "draw this text here".
  */
-export function getTextPixelsAt(
-	text: string,
-	centerX: number,
-	centerY: number,
-	fontSize: number,
-	canvasWidth: number,
-	canvasHeight: number,
-	maxSamples = 3000
-): Point[] {
+export function rasterizeText(options: TextRasterOptions): Point[] {
+	const {
+		text,
+		canvasWidth,
+		canvasHeight,
+		centerX,
+		centerY,
+		widthFrac = 0.65,
+		fontWeight = 100,
+		maxSamples = 30000
+	} = options;
+
 	const canvas = document.createElement('canvas');
 	canvas.width = canvasWidth;
 	canvas.height = canvasHeight;
@@ -23,7 +47,18 @@ export function getTextPixelsAt(
 
 	ctx.fillStyle = '#000';
 	ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-	ctx.font = `100 ${fontSize}px system-ui, -apple-system, sans-serif`;
+
+	let fontSize = options.fontSize;
+	if (fontSize == null) {
+		fontSize = Math.floor((canvasWidth * widthFrac) / (text.length * 0.55));
+		ctx.font = `${fontWeight} ${fontSize}px ${DEFAULT_FONT}`;
+		const measured = ctx.measureText(text).width;
+		const maxTextWidth = canvasWidth * widthFrac;
+		if (measured > maxTextWidth && measured > 0) {
+			fontSize = Math.floor((fontSize * maxTextWidth) / measured);
+		}
+	}
+	ctx.font = `${fontWeight} ${fontSize}px ${DEFAULT_FONT}`;
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
 	ctx.fillStyle = '#fff';
@@ -45,54 +80,42 @@ export function getTextPixelsAt(
 	return Array.from({ length: maxSamples }, (_, i) => pixels[Math.floor(i * step)]);
 }
 
-/**
- * Rasterizes `text` on a hidden canvas and returns up to `maxSamples`
- * pixel coordinates that fall inside the text glyphs.
- */
+/** @deprecated Use rasterizeText() instead */
+export function getTextPixelsAt(
+	text: string,
+	centerX: number,
+	centerY: number,
+	fontSize: number,
+	canvasWidth: number,
+	canvasHeight: number,
+	maxSamples = 3000
+): Point[] {
+	return rasterizeText({
+		text,
+		canvasWidth,
+		canvasHeight,
+		centerX,
+		centerY,
+		fontSize,
+		maxSamples
+	});
+}
+
+/** @deprecated Use rasterizeText() instead */
 export function getTextPixels(
 	text: string,
 	canvasWidth: number,
 	canvasHeight: number,
 	maxSamples = 60000
 ): Point[] {
-	const canvas = document.createElement('canvas');
-	canvas.width = canvasWidth;
-	canvas.height = canvasHeight;
-
-	const ctx = canvas.getContext('2d')!;
-
-	ctx.fillStyle = '#000';
-	ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-	// Size the text so it fits within ~65% of canvas width (measureText accounts for weight 900)
-	const maxTextWidth = canvasWidth * 0.65;
-	let fontSize = Math.floor((canvasWidth * 0.65) / (text.length * 0.55));
-	ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
-	const measured = ctx.measureText(text).width;
-	if (measured > maxTextWidth && measured > 0) {
-		fontSize = Math.floor((fontSize * maxTextWidth) / measured);
-		ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
-	}
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'middle';
-	ctx.fillStyle = '#fff';
-	// Place at 38% from top — leaves room for nav overlay below
-	ctx.fillText(text, canvasWidth / 2, canvasHeight * 0.38);
-
-	const { data } = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-	const pixels: Point[] = [];
-
-	for (let y = 0; y < canvasHeight; y++) {
-		for (let x = 0; x < canvasWidth; x++) {
-			if (data[(y * canvasWidth + x) * 4] > 128) {
-				pixels.push({ x, y });
-			}
-		}
-	}
-
-	if (pixels.length <= maxSamples) return pixels;
-
-	// Subsample evenly to stay within maxSamples
-	const step = pixels.length / maxSamples;
-	return Array.from({ length: maxSamples }, (_, i) => pixels[Math.floor(i * step)]);
+	return rasterizeText({
+		text,
+		canvasWidth,
+		canvasHeight,
+		centerX: canvasWidth / 2,
+		centerY: canvasHeight * 0.38,
+		widthFrac: 0.65,
+		fontWeight: 900,
+		maxSamples
+	});
 }

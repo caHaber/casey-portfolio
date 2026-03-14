@@ -1,44 +1,31 @@
 <script lang="ts">
 	import { navState } from '$lib/stores/nav.svelte';
+	import Projects from '$lib/docs/projects.svx';
+	import Writing from '$lib/docs/writing.svx';
+	import About from '$lib/docs/about.svx';
 
 	const navContent = [
-		{
-			label: 'Projects',
-			body: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque vehicula sapien nec
-			turpis dictum, at facilisis eros tincidunt. Praesent commodo, nisl ac sodales posuere,
-			metus neque ornare nisi, nec hendrerit libero felis in ligula. Curabitur euismod metus
-			at dui laoreet, vel commodo velit posuere. Sed vel tincidunt orci. Integer pharetra
-			scelerisque nulla, et placerat quam condimentum ac.`
-		},
-		{
-			label: 'Writing',
-			body: `Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis
-			egestas. Nulla facilisi. Donec sollicitudin molestie malesuada. Vivamus magna. Fusce
-			risus nisl, viverra et, tempor et, pretium in, sapien. Donec volutpat ligula vel
-			sapien posuere faucibus. Cras sagittis ipsum nec lacus semper, non ultricies lectus
-			imperdiet. Suspendisse viverra diam nec metus efficitur lacinia.`
-		},
-		{
-			label: 'About',
-			body: `Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque
-			laudantium, totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi
-			architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas
-			sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione
-			voluptatem sequi nesciunt.`
-		}
+		{ label: 'Projects', component: Projects },
+		{ label: 'Writing', component: Writing },
+		{ label: 'About', component: About }
 	];
 </script>
 
 <svelte:head>
 	<title>Casey</title>
 </svelte:head>
-
+<!-- <About/> -->
 {#if navState.selectedIndex !== null}
 	{#key navState.selectedIndex}
-		<div class="content-overlay">
-			<p class="content-label">{navContent[navState.selectedIndex].label}</p>
-			<p class="content-body">{navContent[navState.selectedIndex].body}</p>
-		</div>
+		{#if navContent[navState.selectedIndex]}
+			{@const item = navContent[navState.selectedIndex]}
+			{@const Component = item.component}
+			<div class="content-overlay">
+				<div class="content-body">
+					<Component />
+				</div>
+			</div>
+		{/if}
 	{/key}
 {/if}
 
@@ -49,7 +36,7 @@
 		left: 50%;
 		transform: translate(-50%, -50%);
 		width: min(560px, 80vw);
-		text-align: center;
+		/* text-align: center; */
 		pointer-events: none;
 		animation: fade-up 0.5s ease forwards;
 	}
@@ -80,5 +67,33 @@
 		line-height: 1.85;
 		letter-spacing: 0.02em;
 		margin: 0;
+	}
+
+	.content-body :global(h1),
+	.content-body :global(h2),
+	.content-body :global(h3),
+	.content-body :global(h4),
+	.content-body :global(h5),
+	.content-body :global(h6) {
+		color: rgba(255, 255, 255, 0.85);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		margin: 0 0 0.75rem;
+		line-height: 1.3;
+	}
+
+	.content-body :global(h1) { font-size: 1.5rem; }
+	.content-body :global(h2) { font-size: 1.3rem; }
+	.content-body :global(h3) { font-size: 1.1rem; }
+	.content-body :global(h4),
+	.content-body :global(h5),
+	.content-body :global(h6) { font-size: 1rem; }
+
+	.content-body :global(p) {
+		margin: 0 0 0.75rem;
+	}
+
+	.content-body :global(p:last-child) {
+		margin-bottom: 0;
 	}
 </style>

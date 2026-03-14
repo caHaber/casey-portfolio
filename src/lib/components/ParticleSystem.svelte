@@ -3,7 +3,7 @@
 	import { T } from '@threlte/core';
 	import { ShaderMaterial, BufferGeometry, BufferAttribute, Points } from 'three';
 	import { interpolateCoolRGB } from '$lib/utils/color';
-	import { getTextPixels, getTextPixelsAt } from '$lib/utils/textMask';
+	import { rasterizeText, type Point, type TextRasterOptions } from '$lib/utils/textMask';
 	import { navState } from '$lib/stores/nav.svelte';
 
 	// ── Constants ──
@@ -13,18 +13,24 @@
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
 	const TOTAL_N = CASEY_N + NAV_N * 3;
-
-	const NAV_LABELS = ['projects', 'writing', 'about'];
-	const NAV_Y_FRAC = 0.8;
-	const NAV_X_FRACS = [0.2, 0.5, 0.8];
-	const NAV_FONT_SIZE = 56;
 	const NAV_HIT_W = 240;
 	const NAV_HIT_H = 80;
 
-	interface Point {
-		x: number;
-		y: number;
-	}
+	// ── Text targets: single place to define "draw this text here" ──
+	/** Hero text (center of screen). Canvas size and center are set in $effect from W,H. */
+	const HERO_TEXT: Omit<TextRasterOptions, 'canvasWidth' | 'canvasHeight' | 'centerX' | 'centerY'> = {
+		text: 'Casey',
+		widthFrac: 0.65,
+		fontWeight: 900,
+		maxSamples: CASEY_N * 2
+	};
+
+	/** Nav items: label, position hint (xFrac), and fontSize. Actual centerX is measured and clamped. */
+	const NAV_TEXTS = [
+		{ text: 'projects', xFrac: 0.2, yFrac: 0.8, fontSize: 56, maxParticles: NAV_N },
+		{ text: 'writing', xFrac: 0.5, yFrac: 0.8, fontSize: 56, maxParticles: NAV_N },
+		{ text: 'about', xFrac: 0.8, yFrac: 0.8, fontSize: 56, maxParticles: NAV_N }
+	] as const;
 
 	const POSITION_NOISE = 5; // pixels of random offset for organic look
 	const IDLE_ALPHA = 0; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
@@ -178,31 +184,59 @@
 		pendingSwap = null;
 		navState.selectedIndex = null;
 
-		// Measure nav label positions
+		// Measure nav label positions (clamp so text stays on screen)
 		const measureCtx = document.createElement('canvas').getContext('2d')!;
-		measureCtx.font = `100 ${NAV_FONT_SIZE}px system-ui, -apple-system, sans-serif`;
-
-		navCy = H * NAV_Y_FRAC;
-		navCx = NAV_LABELS.map((label, i) => {
-			const textW = measureCtx.measureText(label).width;
-			const rawX = W * NAV_X_FRACS[i];
+		navCy = H * NAV_TEXTS[0].yFrac;
+		navCx = NAV_TEXTS.map((item) => {
+			measureCtx.font = `100 ${item.fontSize}px system-ui, -apple-system, sans-serif`;
+			const textW = measureCtx.measureText(item.text).width;
+			const rawX = W * item.xFrac;
 			return Math.max(textW / 2 + 10, Math.min(W - textW / 2 - 10, rawX));
 		});
 
-		// Rasterize text targets
-		caseyHeroPixels = getTextPixels('Casey', W, H, CASEY_N * 2);
-
-		navScalePixels = NAV_LABELS.map((label, i) =>
-			getTextPixelsAt(label, navCx[i], navCy, NAV_FONT_SIZE, W, H, NAV_N * 2)
-		);
-
-		heroNavPixels = NAV_LABELS.map((label) => {
-			const fs = Math.floor((W * 0.65) / (label.length * 0.55));
-			return getTextPixelsAt(label, W / 2, H * 0.38, fs, W, H, NAV_N * 2);
+		// Rasterize all text targets (single API: "draw this text here")
+		caseyHeroPixels = rasterizeText({
+			...HERO_TEXT,
+			canvasWidth: W,
+			canvasHeight: H,
+			centerX: W / 2,
+			centerY: H * 0.38
 		});
 
-		navCaseyPixels = navCx.map((cx) =>
-			getTextPixelsAt('CASEY', cx, navCy, Math.floor(NAV_FONT_SIZE * 0.75), W, H, CASEY_N)
+		navScalePixels = NAV_TEXTS.map((item, i) =>
+			rasterizeText({
+				text: item.text,
+				canvasWidth: W,
+				canvasHeight: H,
+				centerX: navCx[i],
+				centerY: navCy,
+				fontSize: item.fontSize,
+				maxSamples: item.maxParticles * 2
+			})
+		);
+
+		heroNavPixels = NAV_TEXTS.map((item) =>
+			rasterizeText({
+				text: item.text,
+				canvasWidth: W,
+				canvasHeight: H,
+				centerX: W / 2,
+				centerY: H * 0.38,
+				widthFrac: 0.65,
+				maxSamples: item.maxParticles * 2
+			})
+		);
+
+		navCaseyPixels = navCx.map((cx, i) =>
+			rasterizeText({
+				text: 'CASEY',
+				canvasWidth: W,
+				canvasHeight: H,
+				centerX: cx,
+				centerY: navCy,
+				fontSize: Math.floor(NAV_TEXTS[i].fontSize * 0.75),
+				maxSamples: CASEY_N
+			})
 		);
 
 		// Create casey particles
@@ -212,11 +246,11 @@
 		});
 
 		// Create nav particles
-		navParticles = NAV_LABELS.map((_, ni) => {
+		navParticles = NAV_TEXTS.map((_, ni) => {
 			const pixels = navScalePixels[ni];
 			return Array.from({ length: NAV_N }, (_, i) => {
 				const target = pixels[i % pixels.length];
-				const colorT = ni / (NAV_LABELS.length - 1);
+				const colorT = ni / (NAV_TEXTS.length - 1);
 				return makeParticle(Math.random() * W, Math.random() * H, target, colorT, INTRO_FLY);
 			});
 		});
@@ -399,8 +433,7 @@
 		mouseY = e.clientY - rect.top;
 
 		const overNav =
-			(phase === 'idle' || phase === 'swapped') &&
-			NAV_LABELS.some(
+			NAV_TEXTS.some(
 				(_, i) =>
 					Math.abs(mouseX - navCx[i]) < NAV_HIT_W / 2 && Math.abs(mouseY - navCy) < NAV_HIT_H / 2
 			);
@@ -408,12 +441,12 @@
 	}
 
 	function handleClick(e: MouseEvent) {
-		if (phase === 'swapping') return;
+		// if (phase === 'swapping') return;
 		const rect = renderer.domElement.getBoundingClientRect();
 		const cx = e.clientX - rect.left;
 		const cy = e.clientY - rect.top;
 
-		for (let i = 0; i < NAV_LABELS.length; i++) {
+		for (let i = 0; i < NAV_TEXTS.length; i++) {
 			if (Math.abs(cx - navCx[i]) < NAV_HIT_W / 2 && Math.abs(cy - navCy) < NAV_HIT_H / 2) {
 				pendingSwap = i;
 				break;

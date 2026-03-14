@@ -9,7 +9,7 @@ const config = {
 			filename.includes('node_modules') ? undefined : { runes: true }
 	},
 	preprocess: [mdsvex()],
-	extensions: ['.svelte', '.svx']
+	extensions: ['.svelte', '.svx', '.md']
 };
 
 export default config;
