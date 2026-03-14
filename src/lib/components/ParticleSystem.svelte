@@ -7,7 +7,7 @@
 	import { navState } from '$lib/stores/nav.svelte';
 
 	// ── Constants ──
-	const CASEY_N = 300000;
+	const CASEY_N = 30000;
 	const NAV_N = 6000;
 	const MOUSE_RADIUS = 130;
 	const INTRO_FLY = 1250;

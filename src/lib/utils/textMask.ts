@@ -37,7 +37,7 @@ export function rasterizeText(options: TextRasterOptions): Point[] {
 		centerY,
 		widthFrac = 0.65,
 		fontWeight = 100,
-		maxSamples = 30000
+		maxSamples = 3000000
 	} = options;
 
 	const canvas = document.createElement('canvas');

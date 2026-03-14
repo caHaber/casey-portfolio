@@ -52,15 +52,6 @@
 		}
 	}
 
-	.content-label {
-		color: rgba(255, 255, 255, 0.35);
-		font-size: 0.7rem;
-		font-weight: 600;
-		letter-spacing: 0.2em;
-		text-transform: uppercase;
-		margin: 0 0 1rem;
-	}
-
 	.content-body {
 		color: rgba(255, 255, 255, 0.55);
 		font-size: 0.9rem;
