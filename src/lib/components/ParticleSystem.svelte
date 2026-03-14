@@ -10,6 +10,7 @@
 	const CASEY_N = 300000;
 	const NAV_N = 60000;
 	const MOUSE_RADIUS = 130;
+	const MAX_TRIGGERS_PER_FRAME = 450; // cap so first hover doesn’t burst all at once
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
 	const TOTAL_N = CASEY_N + NAV_N * 3;
@@ -209,6 +210,7 @@
 	const RADIUS_SQ = MOUSE_RADIUS * MOUSE_RADIUS;
 	let mouseX = -MOUSE_RADIUS * 2;
 	let mouseY = -MOUSE_RADIUS * 2;
+	let mouseEverSet = false;
 
 	// ── Initialize particles on size change ──
 	$effect(() => {
@@ -342,25 +344,32 @@
 		material.uniforms.uRotationTime.value = now * ROTATION_SPEED;
 		material.uniforms.uSizeTime.value = now * SIZE_PULSE_SPEED;
 
-		// Mouse trigger
-		for (const p of caseyParticles) {
-			if (!p.triggered) {
-				const dx = p.homeX - mouseX;
-				const dy = p.homeY - mouseY;
-				if (dx * dx + dy * dy < RADIUS_SQ) {
-					p.triggered = true;
-					p.flyStart = now;
-				}
-			}
-		}
-		for (const group of navParticles) {
-			for (const p of group) {
+		// Mouse trigger (capped per frame so first hover isn’t one big burst)
+		if (mouseEverSet) {
+			let triggeredThisFrame = 0;
+			for (const p of caseyParticles) {
+				if (triggeredThisFrame >= MAX_TRIGGERS_PER_FRAME) break;
 				if (!p.triggered) {
 					const dx = p.homeX - mouseX;
 					const dy = p.homeY - mouseY;
 					if (dx * dx + dy * dy < RADIUS_SQ) {
 						p.triggered = true;
 						p.flyStart = now;
+						triggeredThisFrame++;
+					}
+				}
+			}
+			for (const group of navParticles) {
+				for (const p of group) {
+					if (triggeredThisFrame >= MAX_TRIGGERS_PER_FRAME) break;
+					if (!p.triggered) {
+						const dx = p.homeX - mouseX;
+						const dy = p.homeY - mouseY;
+						if (dx * dx + dy * dy < RADIUS_SQ) {
+							p.triggered = true;
+							p.flyStart = now;
+							triggeredThisFrame++;
+						}
 					}
 				}
 			}
@@ -482,6 +491,7 @@
 		const rect = renderer.domElement.getBoundingClientRect();
 		mouseX = e.clientX - rect.left;
 		mouseY = e.clientY - rect.top;
+		mouseEverSet = true;
 
 		const overNav =
 			NAV_TEXTS.some(
