@@ -7,8 +7,8 @@
 	import { navState } from '$lib/stores/nav.svelte';
 
 	// ── Constants ──
-	const CASEY_N = 30000;
-	const NAV_N = 6000;
+	const CASEY_N = 300000;
+	const NAV_N = 60000;
 	const MOUSE_RADIUS = 130;
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
@@ -33,7 +33,7 @@
 	] as const;
 
 	const POSITION_NOISE = 5; // pixels of random offset for organic look
-	const IDLE_ALPHA = 0; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
+	const IDLE_ALPHA = 10 / 255; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
 
 	interface Particle {
 		homeX: number;
@@ -106,33 +106,55 @@
 	const particleColors = new Float32Array(TOTAL_N * 3);
 	const alphas = new Float32Array(TOTAL_N);
 
+	const pointSizeScales = new Float32Array(TOTAL_N);
+	const rotations = new Float32Array(TOTAL_N);
+
 	const geometry = new BufferGeometry();
 	const posAttr = new BufferAttribute(positions, 3);
 	const colorAttr = new BufferAttribute(particleColors, 3);
 	const alphaAttr = new BufferAttribute(alphas, 1);
+	const pointSizeAttr = new BufferAttribute(pointSizeScales, 1);
+	const rotationAttr = new BufferAttribute(rotations, 1);
 	geometry.setAttribute('position', posAttr);
 	geometry.setAttribute('particleColor', colorAttr);
 	geometry.setAttribute('alpha', alphaAttr);
+	geometry.setAttribute('pointSizeScale', pointSizeAttr);
+	geometry.setAttribute('rotation', rotationAttr);
 	geometry.setDrawRange(0, 0); // nothing renders until initialized
 
 	const vertexShader = /* glsl */ `
 		attribute float alpha;
 		attribute vec3 particleColor;
+		attribute float pointSizeScale;
+		attribute float rotation;
 		varying vec4 vColor;
-		uniform float uPointSize;
+		varying float vRotation;
+		uniform float uPointSizeMin;
+		uniform float uPointSizeMax;
 
 		void main() {
 			vColor = vec4(particleColor, alpha);
+			vRotation = rotation;
 			vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 			pos.y = -pos.y;
 			gl_Position = pos;
-			gl_PointSize = uPointSize;
+			float size = uPointSizeMin + pointSizeScale * (uPointSizeMax - uPointSizeMin);
+			gl_PointSize = size;
 		}
 	`;
 
 	const fragmentShader = /* glsl */ `
 		varying vec4 vColor;
+		varying float vRotation;
+
 		void main() {
+			vec2 uv = gl_PointCoord - 0.5;
+			float c = cos(-vRotation);
+			float s = sin(-vRotation);
+			uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
+			// Slightly elliptical so per-point rotation is visible
+			float d = length(uv / vec2(1.25, 0.75));
+			if (d > 0.5) discard;
 			gl_FragColor = vColor;
 		}
 	`;
@@ -143,7 +165,8 @@
 		transparent: true,
 		depthWrite: false,
 		uniforms: {
-			uPointSize: { value: 5.0 }
+			uPointSizeMin: { value: 1.0 },
+			uPointSizeMax: { value: 10.0 }
 		}
 	});
 
@@ -265,6 +288,8 @@
 			particleColors[idx * 3 + 1] = 128 / 255;
 			particleColors[idx * 3 + 2] = 192 / 255;
 			alphas[idx] = IDLE_ALPHA;
+			pointSizeScales[idx] = Math.random();
+			rotations[idx] = Math.random() * 6.28318530718;
 			idx++;
 		}
 		for (const group of navParticles) {
@@ -276,6 +301,8 @@
 				particleColors[idx * 3 + 1] = 128 / 255;
 				particleColors[idx * 3 + 2] = 192 / 255;
 				alphas[idx] = IDLE_ALPHA;
+				pointSizeScales[idx] = Math.random();
+				rotations[idx] = Math.random() * 6.28318530718;
 				idx++;
 			}
 		}
@@ -283,6 +310,8 @@
 		posAttr.needsUpdate = true;
 		colorAttr.needsUpdate = true;
 		alphaAttr.needsUpdate = true;
+		pointSizeAttr.needsUpdate = true;
+		rotationAttr.needsUpdate = true;
 		geometry.setDrawRange(0, TOTAL_N);
 	});
 
@@ -401,8 +430,8 @@
 					const et = easeOutCubic(t);
 					px = p.homeX + (p.targetX - p.homeX) * et;
 					py = p.homeY + (p.targetY - p.homeY) * et;
-					p.x = px;
-					p.y = py;
+					p.x = px + Math.random() * 100;
+					p.y = py + Math.random() * 100;
 					particleColors[idx * 3] = p.cr;
 					particleColors[idx * 3 + 1] = p.cg;
 					particleColors[idx * 3 + 2] = p.cb;
