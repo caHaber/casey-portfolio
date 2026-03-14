@@ -179,8 +179,8 @@
 		transparent: true,
 		depthWrite: false,
 		uniforms: {
-			uPointSizeMin: { value: 2.0 },
-			uPointSizeMax: { value: 14.0 },
+			uPointSizeMin: { value: 1.0 },
+			uPointSizeMax: { value: 5.0 },
 			uRotationTime: { value: 0.0 },
 			uSizeTime: { value: 0.0 }
 		}
