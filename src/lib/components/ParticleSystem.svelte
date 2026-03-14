@@ -8,13 +8,13 @@
 
 	// ── Constants ──
 	const CASEY_N = 300000;
-	const NAV_N = 60000;
+	const NAV_N = 6000;
 	const MOUSE_RADIUS = 130;
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
 	const TOTAL_N = CASEY_N + NAV_N * 3;
 
-	const NAV_LABELS = ['PROJECTS', 'WRITING', 'ABOUT'];
+	const NAV_LABELS = ['projects', 'writing', 'about'];
 	const NAV_Y_FRAC = 0.8;
 	const NAV_X_FRACS = [0.2, 0.5, 0.8];
 	const NAV_FONT_SIZE = 56;
@@ -26,6 +26,9 @@
 		y: number;
 	}
 
+	const POSITION_NOISE = 5; // pixels of random offset for organic look
+	const IDLE_ALPHA = 0; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
+
 	interface Particle {
 		homeX: number;
 		homeY: number;
@@ -33,6 +36,8 @@
 		y: number;
 		targetX: number;
 		targetY: number;
+		offsetX: number;
+		offsetY: number;
 		triggered: boolean;
 		flyStart: number;
 		flyDuration: number;
@@ -53,6 +58,8 @@
 		flyDuration: number
 	): Particle {
 		const [r, g, b] = interpolateCoolRGB(Math.max(0, Math.min(1, colorT)));
+		const offsetX = (Math.random() - 0.5) * 2 * POSITION_NOISE;
+		const offsetY = (Math.random() - 0.5) * 2 * POSITION_NOISE;
 		return {
 			homeX,
 			homeY,
@@ -60,6 +67,8 @@
 			y: homeY,
 			targetX: target.x,
 			targetY: target.y,
+			offsetX,
+			offsetY,
 			triggered: false,
 			flyStart: 0,
 			flyDuration,
@@ -128,7 +137,7 @@
 		transparent: true,
 		depthWrite: false,
 		uniforms: {
-			uPointSize: { value: 1.0 }
+			uPointSize: { value: 5.0 }
 		}
 	});
 
@@ -215,24 +224,24 @@
 		// Set initial GPU buffer values
 		let idx = 0;
 		for (const p of caseyParticles) {
-			positions[idx * 3] = p.homeX;
-			positions[idx * 3 + 1] = p.homeY;
+			positions[idx * 3] = p.homeX + p.offsetX;
+			positions[idx * 3 + 1] = p.homeY + p.offsetY;
 			positions[idx * 3 + 2] = 0;
 			particleColors[idx * 3] = 96 / 255;
 			particleColors[idx * 3 + 1] = 128 / 255;
 			particleColors[idx * 3 + 2] = 192 / 255;
-			alphas[idx] = 40 / 255;
+			alphas[idx] = IDLE_ALPHA;
 			idx++;
 		}
 		for (const group of navParticles) {
 			for (const p of group) {
-				positions[idx * 3] = p.homeX;
-				positions[idx * 3 + 1] = p.homeY;
+				positions[idx * 3] = p.homeX + p.offsetX;
+				positions[idx * 3 + 1] = p.homeY + p.offsetY;
 				positions[idx * 3 + 2] = 0;
 				particleColors[idx * 3] = 96 / 255;
 				particleColors[idx * 3 + 1] = 128 / 255;
 				particleColors[idx * 3 + 2] = 192 / 255;
-				alphas[idx] = 40 / 255;
+				alphas[idx] = IDLE_ALPHA;
 				idx++;
 			}
 		}
@@ -249,7 +258,7 @@
 
 		const now = performance.now();
 		const W = size.current.width;
-		const H = size.current.height;
+		// const H = size.current.height;
 
 		// Mouse trigger
 		for (const p of caseyParticles) {
@@ -317,7 +326,7 @@
 				particleColors[idx * 3] = 96 / 255;
 				particleColors[idx * 3 + 1] = 128 / 255;
 				particleColors[idx * 3 + 2] = 192 / 255;
-				alpha = 40 / 255;
+				alpha = IDLE_ALPHA;
 			} else {
 				const elapsed = now - p.flyStart;
 				const t = Math.min(elapsed / p.flyDuration, 1.0);
@@ -330,14 +339,14 @@
 				particleColors[idx * 3 + 1] = p.cg;
 				particleColors[idx * 3 + 2] = p.cb;
 				if (t < 1.0) {
-					alpha = (40 + et * 215) / 255;
+					alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
 				} else {
 					const pulse = 0.75 + 0.25 * Math.sin(now / 700 + (p.targetX / W) * Math.PI * 4);
 					alpha = pulse;
 				}
 			}
-			positions[idx * 3] = px;
-			positions[idx * 3 + 1] = py;
+			positions[idx * 3] = px + p.offsetX;
+			positions[idx * 3 + 1] = py + p.offsetY;
 			positions[idx * 3 + 2] = 0;
 			alphas[idx] = alpha;
 			idx++;
@@ -351,7 +360,7 @@
 					particleColors[idx * 3] = 96 / 255;
 					particleColors[idx * 3 + 1] = 128 / 255;
 					particleColors[idx * 3 + 2] = 192 / 255;
-					alpha = 40 / 255;
+					alpha = IDLE_ALPHA;
 				} else {
 					const elapsed = now - p.flyStart;
 					const t = Math.min(elapsed / p.flyDuration, 1.0);
@@ -364,14 +373,14 @@
 					particleColors[idx * 3 + 1] = p.cg;
 					particleColors[idx * 3 + 2] = p.cb;
 					if (t < 1.0) {
-						alpha = (40 + et * 215) / 255;
+						alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
 					} else {
 						const pulse = 0.75 + 0.25 * Math.sin(now / 700 + (p.targetX / W) * Math.PI * 4);
 						alpha = pulse;
 					}
 				}
-				positions[idx * 3] = px;
-				positions[idx * 3 + 1] = py;
+				positions[idx * 3] = px + p.offsetX;
+				positions[idx * 3 + 1] = py + p.offsetY;
 				positions[idx * 3 + 2] = 0;
 				alphas[idx] = alpha;
 				idx++;
