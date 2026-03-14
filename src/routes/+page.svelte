@@ -1,54 +1,90 @@
 <script lang="ts">
-	import SquareGrid from '$lib/components/SquareGrid.svelte';
-	import FloatingNav from '$lib/components/FloatingNav.svelte';
+	import { navState } from '$lib/stores/nav.svelte';
+	import Projects from '$lib/docs/projects.svx';
+	import Writing from '$lib/docs/writing.svx';
+	import About from '$lib/docs/about.svx';
 
-	const navLinks = [
-		{ label: 'Projects', href: '/projects' },
-		{ label: 'Writing', href: '/writing' },
-		{ label: 'About', href: '/about' }
+	const navContent = [
+		{ label: 'Projects', component: Projects },
+		{ label: 'Writing', component: Writing },
+		{ label: 'About', component: About }
 	];
 </script>
 
 <svelte:head>
 	<title>Casey</title>
 </svelte:head>
-
-<SquareGrid />
-
-<div class="overlay">
-	<FloatingNav links={navLinks} />
-	<p class="bio">Software engineer, designer, and builder of things.</p>
-</div>
+<!-- <About/> -->
+{#if navState.selectedIndex !== null}
+	{#key navState.selectedIndex}
+		{#if navContent[navState.selectedIndex]}
+			{@const item = navContent[navState.selectedIndex]}
+			{@const Component = item.component}
+			<div class="content-overlay">
+				<div class="content-body">
+					<Component />
+				</div>
+			</div>
+		{/if}
+	{/key}
+{/if}
 
 <style>
-	.overlay {
+	.content-overlay {
 		position: fixed;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.5rem;
-		padding: 3rem 2rem;
-		animation: fade-in 0.6s ease forwards;
+		top: 58%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: min(560px, 80vw);
+		/* text-align: center; */
+		pointer-events: none;
+		animation: fade-up 0.5s ease forwards;
 	}
 
-	@keyframes fade-in {
+	@keyframes fade-up {
 		from {
 			opacity: 0;
+			transform: translate(-50%, calc(-50% + 12px));
 		}
 		to {
 			opacity: 1;
+			transform: translate(-50%, -50%);
 		}
 	}
 
-	.bio {
-		color: rgba(255, 255, 255, 0.5);
-		font-size: 0.95rem;
-		letter-spacing: 0.04em;
-		text-align: center;
-		max-width: 40ch;
-		line-height: 1.7;
+	.content-body {
+		color: rgba(255, 255, 255, 0.55);
+		font-size: 0.9rem;
+		line-height: 1.85;
+		letter-spacing: 0.02em;
+		margin: 0;
+	}
+
+	.content-body :global(h1),
+	.content-body :global(h2),
+	.content-body :global(h3),
+	.content-body :global(h4),
+	.content-body :global(h5),
+	.content-body :global(h6) {
+		color: rgba(255, 255, 255, 0.85);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		margin: 0 0 0.75rem;
+		line-height: 1.3;
+	}
+
+	.content-body :global(h1) { font-size: 1.5rem; }
+	.content-body :global(h2) { font-size: 1.3rem; }
+	.content-body :global(h3) { font-size: 1.1rem; }
+	.content-body :global(h4),
+	.content-body :global(h5),
+	.content-body :global(h6) { font-size: 1rem; }
+
+	.content-body :global(p) {
+		margin: 0 0 0.75rem;
+	}
+
+	.content-body :global(p:last-child) {
+		margin-bottom: 0;
 	}
 </style>
