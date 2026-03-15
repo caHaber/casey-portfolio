@@ -10,7 +10,7 @@
 	const CASEY_N = 300000;
 	const NAV_N = 60000;
 	const MOUSE_RADIUS = 130;
-	const MAX_TRIGGERS_PER_FRAME = 450; // cap so first hover doesn’t burst all at once
+	const MAX_TRIGGERS_PER_FRAME = 5000; // cap so first hover doesn’t burst all at once
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
 	const TOTAL_N = CASEY_N + NAV_N * 3;
@@ -34,8 +34,7 @@
 	] as const;
 
 	const POSITION_NOISE = 5; // pixels of random offset for organic look
-	const IDLE_ALPHA = 2 / 255; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
-	const ROTATION_SPEED = 0.00045; // radians per ms (more noticeable drift)
+	const IDLE_ALPHA = 20 / 255; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
 	const SIZE_PULSE_SPEED = 0.0012; // rad/ms for individual grow/shrink (~5s period)
 
 	interface Particle {
@@ -112,7 +111,6 @@
 	const alphas = new Float32Array(TOTAL_N);
 
 	const pointSizeScales = new Float32Array(TOTAL_N);
-	const rotations = new Float32Array(TOTAL_N);
 	const sizePhases = new Float32Array(TOTAL_N);
 
 	const geometry = new BufferGeometry();
@@ -120,13 +118,11 @@
 	const colorAttr = new BufferAttribute(particleColors, 3);
 	const alphaAttr = new BufferAttribute(alphas, 1);
 	const pointSizeAttr = new BufferAttribute(pointSizeScales, 1);
-	const rotationAttr = new BufferAttribute(rotations, 1);
 	const sizePhaseAttr = new BufferAttribute(sizePhases, 1);
 	geometry.setAttribute('position', posAttr);
 	geometry.setAttribute('particleColor', colorAttr);
 	geometry.setAttribute('alpha', alphaAttr);
 	geometry.setAttribute('pointSizeScale', pointSizeAttr);
-	geometry.setAttribute('rotation', rotationAttr);
 	geometry.setAttribute('sizePhase', sizePhaseAttr);
 	geometry.setDrawRange(0, 0); // nothing renders until initialized
 
@@ -134,18 +130,14 @@
 		attribute float alpha;
 		attribute vec3 particleColor;
 		attribute float pointSizeScale;
-		attribute float rotation;
 		attribute float sizePhase;
 		varying vec4 vColor;
-		varying float vRotation;
 		uniform float uPointSizeMin;
 		uniform float uPointSizeMax;
-		uniform float uRotationTime;
 		uniform float uSizeTime;
 
 		void main() {
 			vColor = vec4(particleColor, alpha);
-			vRotation = rotation + uRotationTime;
 			vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 			pos.y = -pos.y;
 			gl_Position = pos;
@@ -157,18 +149,10 @@
 
 	const fragmentShader = /* glsl */ `
 		varying vec4 vColor;
-		varying float vRotation;
 
 		void main() {
 			vec2 uv = gl_PointCoord - 0.5;
-			float c = cos(-vRotation);
-			float s = sin(-vRotation);
-			uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
-			// Rounded square: half-size 0.5, corner radius 0.18
-			float cornerRadius = 0.18;
-			vec2 d = abs(uv) - (0.5 - cornerRadius);
-			float sdf = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - cornerRadius;
-			if (sdf > 0.0) discard;
+			if (length(uv) > 0.5) discard;
 			gl_FragColor = vColor;
 		}
 	`;
@@ -179,9 +163,8 @@
 		transparent: true,
 		depthWrite: false,
 		uniforms: {
-			uPointSizeMin: { value: 1.0 },
-			uPointSizeMax: { value: 5.0 },
-			uRotationTime: { value: 0.0 },
+			uPointSizeMin: { value: 2.0 },
+			uPointSizeMax: { value: 10.0 },
 			uSizeTime: { value: 0.0 }
 		}
 	});
@@ -306,7 +289,6 @@
 			particleColors[idx * 3 + 2] = 192 / 255;
 			alphas[idx] = IDLE_ALPHA;
 			pointSizeScales[idx] = Math.random();
-			rotations[idx] = Math.random() * 6.28318530718;
 			sizePhases[idx] = Math.random() * 6.28318530718;
 			idx++;
 		}
@@ -320,7 +302,6 @@
 				particleColors[idx * 3 + 2] = 192 / 255;
 				alphas[idx] = IDLE_ALPHA;
 				pointSizeScales[idx] = Math.random();
-				rotations[idx] = Math.random() * 6.28318530718;
 				sizePhases[idx] = Math.random() * 6.28318530718;
 				idx++;
 			}
@@ -330,7 +311,6 @@
 		colorAttr.needsUpdate = true;
 		alphaAttr.needsUpdate = true;
 		pointSizeAttr.needsUpdate = true;
-		rotationAttr.needsUpdate = true;
 		sizePhaseAttr.needsUpdate = true;
 		geometry.setDrawRange(0, TOTAL_N);
 	});
@@ -341,7 +321,6 @@
 
 		const now = performance.now();
 
-		material.uniforms.uRotationTime.value = now * ROTATION_SPEED;
 		material.uniforms.uSizeTime.value = now * SIZE_PULSE_SPEED;
 
 		// Mouse trigger (capped per frame so first hover isn’t one big burst)
@@ -441,7 +420,6 @@
 			positions[idx * 3 + 1] = py + p.offsetY;
 			positions[idx * 3 + 2] = 0;
 			alphas[idx] = alpha;
-			rotations[idx] = rotations[idx] + 1;
 			idx++;
 		}
 		for (const group of navParticles) {
