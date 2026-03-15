@@ -2,7 +2,6 @@
 	import { T, useThrelte } from '@threlte/core';
 	import { OrthographicCamera } from 'three';
 	import ParticleSystem from './ParticleSystem.svelte';
-	import MarkdownPixelDisplay from './MarkdownPixelDisplay.svelte';
 
 	const { size, renderer } = useThrelte();
 
@@ -20,4 +19,3 @@
 />
 
 <ParticleSystem />
-<MarkdownPixelDisplay />

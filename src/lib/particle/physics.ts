@@ -61,6 +61,26 @@ export function retargetGroup(
 	}
 }
 
+export function retargetGroupStaggered(
+	particles: Particle[],
+	targets: Point[],
+	now: number,
+	duration: number,
+	staggerMs: number
+): void {
+	for (let i = 0; i < particles.length; i++) {
+		const target = targets[i % targets.length];
+		const p = particles[i];
+		p.homeX = p.x;
+		p.homeY = p.y;
+		p.targetX = target.x;
+		p.targetY = target.y;
+		p.triggered = true;
+		p.flyStart = now + Math.random() * staggerMs;
+		p.flyDuration = duration;
+	}
+}
+
 export function resetGroupToInitial(
 	particles: Particle[],
 	now: number,
@@ -89,7 +109,8 @@ export function writeParticleToBuffers(
 	positions: Float32Array,
 	colors: Float32Array,
 	alphas: Float32Array,
-	idx: number
+	idx: number,
+	offsetScale = 1.0
 ): void {
 	let px: number, py: number, alpha: number;
 
@@ -127,12 +148,15 @@ export function writeParticleToBuffers(
 			colors[idx * 3 + 1] = p.cg;
 			colors[idx * 3 + 2] = p.cb;
 			const twinkle = 0.3 + 0.7 * Math.sin(now * 0.0012 + p.twinklePhase);
-			alpha = twinkle * 0.4;
+			// Blend twinkle alpha toward solid when offsetScale < 1 (content settling)
+			const baseAlpha = twinkle * 0.4;
+			const settledAlpha = 0.55;
+			alpha = baseAlpha + (settledAlpha - baseAlpha) * (1 - offsetScale);
 		}
 	}
 
-	positions[idx * 3] = px + p.offsetX;
-	positions[idx * 3 + 1] = py + p.offsetY;
+	positions[idx * 3] = px + p.offsetX * offsetScale;
+	positions[idx * 3 + 1] = py + p.offsetY * offsetScale;
 	positions[idx * 3 + 2] = 0;
 	alphas[idx] = alpha;
 }

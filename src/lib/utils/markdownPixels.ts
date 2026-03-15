@@ -113,6 +113,87 @@ function wrapToLines(
 	return lines;
 }
 
+export interface ContentLayout {
+	pixels: Point[];
+	backArrowBounds: { x: number; y: number; w: number; h: number };
+}
+
+export async function renderContentWithTitle(
+	title: string,
+	markdown: string,
+	canvasW: number,
+	canvasH: number,
+	x0: number,
+	maxWidth: number,
+	baseFontSize = 12
+): Promise<ContentLayout> {
+	const titleSize = Math.round(baseFontSize * 2.8);
+	await document.fonts.load(`400 ${baseFontSize}px 'Silkscreen'`);
+	await document.fonts.load(`700 ${baseFontSize}px 'Silkscreen'`);
+	await document.fonts.load(`700 ${titleSize}px 'Silkscreen'`);
+
+	const canvas = document.createElement('canvas');
+	canvas.width = canvasW;
+	canvas.height = canvasH;
+	const ctx = canvas.getContext('2d')!;
+	ctx.fillStyle = '#000';
+	ctx.fillRect(0, 0, canvasW, canvasH);
+	ctx.fillStyle = '#fff';
+	ctx.textBaseline = 'top';
+
+	// Draw title header "← {title}" — arrow and title are both large
+	const titleY = Math.round(canvasH * 0.06);
+	const titleFont = makeFont(titleSize, '700');
+	ctx.font = titleFont;
+	const arrowText = '← ';
+	const arrowW = ctx.measureText(arrowText).width;
+	ctx.fillText(arrowText + title, x0, titleY);
+
+	const backArrowBounds = {
+		x: x0,
+		y: titleY,
+		w: arrowW + ctx.measureText(title).width,
+		h: Math.round(titleSize * 2.2)
+	};
+
+	// Draw markdown body below title
+	const bodyY = Math.round(titleY + titleSize * 2.8);
+	let cy = bodyY;
+	for (const block of parseMarkdown(markdown)) {
+		if (block.kind === 'spacer') { cy += Math.round(baseFontSize * 0.6); continue; }
+
+		const size = blockFontSize(block.kind, baseFontSize);
+		const weight = blockFontWeight(block.kind);
+		const lineH = Math.round(size * 2.2);
+		const prefix = block.kind === 'listitem' ? '- ' : '';
+		const wrapped = wrapToLines(ctx, block.spans, prefix, size, weight, maxWidth);
+
+		for (const line of wrapped) {
+			let cx = x0;
+			for (const token of line) {
+				ctx.font = makeFont(size, token.bold ? '700' : weight);
+				ctx.fillText(token.text, cx, cy);
+				cx += ctx.measureText(token.text).width;
+			}
+			cy += lineH;
+		}
+		if (block.kind !== 'listitem' && block.kind !== 'paragraph') {
+			cy += Math.round(baseFontSize * 0.2);
+		}
+	}
+
+	const { data } = ctx.getImageData(0, 0, canvasW, canvasH);
+	const points: Point[] = [];
+	for (let y = 0; y < canvasH; y++) {
+		for (let x = 0; x < canvasW; x++) {
+			if (data[(y * canvasW + x) * 4] > 128) {
+				points.push({ x, y });
+			}
+		}
+	}
+	return { pixels: points, backArrowBounds };
+}
+
 export async function renderMarkdownToPixels(
 	markdown: string,
 	canvasW: number,
