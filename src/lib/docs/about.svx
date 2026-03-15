@@ -1,7 +1,9 @@
-### About
+### Casey Haber
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque
-laudantium, totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi
-architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas
-sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione
-voluptatem sequi nesciunt.
+Data visualization engineer and full-stack developer. Currently building visualization libraries and dashboards at **Atlassian**.
+
+USF grad — B.S. Computer Science, Design minor ('18).
+
+**Specialties:** data visualization · full-stack engineering · d3.js · react · python
+
+[haber.casey@gmail.com](mailto:haber.casey@gmail.com)

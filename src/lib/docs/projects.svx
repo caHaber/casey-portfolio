@@ -1,7 +1,13 @@
 ### Projects
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque vehicula sapien nec
-turpis dictum, at facilisis eros tincidunt. Praesent commodo, nisl ac sodales posuere,
-metus neque ornare nisi, nec hendrerit libero felis in ligula. Curabitur euismod metus
-at dui laoreet, vel commodo velit posuere. Sed vel tincidunt orci. Integer pharetra
-scelerisque nulla, et placerat quam condimentum ac.
+#### Visualizations
+
+- [NBA Salaries](https://cahaber.me/#/basketball) — interactive salary explorer
+- [Kindle Reading History](https://observablehq.com/@cahaber/kindle-reading-history-total-reading-time-273-hours-34-book) — 273 hrs of reading data
+- [NBA Over/Under Pool 2025–26](https://observablehq.com/@cahaber/nba-over-under-pool-2025-2026) — season-long league tracker
+
+#### Research & Patent
+
+- [Visualizing Stack Overflow Tags](https://twosixlabs.github.io/visualizing-tags/) — programming behavior explorer (Two Six Labs)
+- [Software Library Analyzer](https://osf.io/j28ev/) — **VDA 2020 best paper**
+- [US Patent #11487538](https://patents.google.com/patent/US11487538B1/en) — software library analysis
