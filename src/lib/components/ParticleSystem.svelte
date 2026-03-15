@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { useTask, useThrelte } from '@threlte/core';
 	import { T } from '@threlte/core';
-	import { ShaderMaterial, BufferGeometry, BufferAttribute, Points } from 'three';
+	import { ShaderMaterial, BufferGeometry, BufferAttribute, Points, Vector2 } from 'three';
 	import { interpolateCoolRGB } from '$lib/utils/color';
 	import { rasterizeText, type Point, type TextRasterOptions } from '$lib/utils/textMask';
 	import { navState } from '$lib/stores/nav.svelte';
@@ -10,6 +10,9 @@
 	const CASEY_N = 300000;
 	const NAV_N = 60000;
 	const MOUSE_RADIUS = 130;
+	const PULSE_RADIUS = MOUSE_RADIUS * 1.2; // wave zone 20% larger than trigger
+	const PULSE_WAVE_SPEED = 0.004; // rad/ms for propagating wave
+	const PULSE_WAVE_AMPLITUDE = 10.72; // size scale ±22% in wave zone
 	const MAX_TRIGGERS_PER_FRAME = 5000; // cap so first hover doesn’t burst all at once
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
@@ -135,6 +138,10 @@
 		uniform float uPointSizeMin;
 		uniform float uPointSizeMax;
 		uniform float uSizeTime;
+		uniform vec2 uMouse;
+		uniform float uPulseRadius;
+		uniform float uPulseTime;
+		uniform float uPulseWaveAmplitude;
 
 		void main() {
 			vColor = vec4(particleColor, alpha);
@@ -144,6 +151,12 @@
 			float baseSize = uPointSizeMin + pointSizeScale * (uPointSizeMax - uPointSizeMin);
 			float sizeAnim = 0.5 + 0.5 * sin(uSizeTime + sizePhase);
 			gl_PointSize = baseSize * sizeAnim;
+
+			// Life-like wave: propagate from mouse, soft falloff at pulse radius (20% beyond trigger)
+			float dist = length(position.xy - uMouse);
+			float inZone = 1.0 - smoothstep(uPulseRadius * 0.65, uPulseRadius, dist);
+			float wave = sin(uPulseTime - dist * 0.035) * uPulseWaveAmplitude * inZone;
+			gl_PointSize *= 1.0 + wave;
 		}
 	`;
 
@@ -165,7 +178,11 @@
 		uniforms: {
 			uPointSizeMin: { value: 2.0 },
 			uPointSizeMax: { value: 10.0 },
-			uSizeTime: { value: 0.0 }
+			uSizeTime: { value: 0.0 },
+			uMouse: { value: new Vector2(-1000, -1000) },
+			uPulseRadius: { value: PULSE_RADIUS },
+			uPulseTime: { value: 0.0 },
+			uPulseWaveAmplitude: { value: PULSE_WAVE_AMPLITUDE }
 		}
 	});
 
@@ -322,6 +339,8 @@
 		const now = performance.now();
 
 		material.uniforms.uSizeTime.value = now * SIZE_PULSE_SPEED;
+		material.uniforms.uMouse.value.set(mouseX, mouseY);
+		material.uniforms.uPulseTime.value = now * PULSE_WAVE_SPEED;
 
 		// Mouse trigger (capped per frame so first hover isn’t one big burst)
 		if (mouseEverSet) {
