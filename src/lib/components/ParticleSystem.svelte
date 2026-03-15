@@ -11,8 +11,8 @@
 	const NAV_N = 60000;
 	const MOUSE_RADIUS = 130;
 	const PULSE_RADIUS = MOUSE_RADIUS * 1.2; // wave zone 20% larger than trigger
-	const PULSE_WAVE_SPEED = 0.004; // rad/ms for propagating wave
-	const PULSE_WAVE_AMPLITUDE = 10.72; // size scale ±22% in wave zone
+	const PULSE_WAVE_SPEED = 0.004; // rad/ms for propagating wave // Old value: 0.004
+	const PULSE_WAVE_AMPLITUDE = 10.72; // size scale ±22% in wave zone// Old value: 0.22
 	const MAX_TRIGGERS_PER_FRAME = 5000; // cap so first hover doesn’t burst all at once
 	const INTRO_FLY = 1250;
 	const SWAP_DURATION = 1000;
