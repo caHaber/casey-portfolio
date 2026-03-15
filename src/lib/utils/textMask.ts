@@ -22,7 +22,7 @@ export interface TextRasterOptions {
 	maxSamples?: number;
 }
 
-const DEFAULT_FONT = 'system-ui, -apple-system, sans-serif';
+const DEFAULT_FONT = "'Space Grotesk', system-ui, -apple-system, sans-serif";
 
 /**
  * Rasterizes text at the given position and returns pixel coordinates inside the glyphs.
