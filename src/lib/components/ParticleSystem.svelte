@@ -14,7 +14,7 @@
 	} from '$lib/particle/physics';
 	import { createHeroMaterial } from '$lib/particle/shaders';
 	import { getParticleContext } from '$lib/particle/context.svelte';
-	import { renderContentWithTitle, type ContentLayout } from '$lib/utils/markdownPixels';
+	import { renderContentWithTitle, type ContentLayout, type LinkRegion } from '$lib/utils/markdownPixels';
 
 	import aboutRaw from '$lib/docs/about.svx?raw';
 	import projectsRaw from '$lib/docs/projects.svx?raw';
@@ -107,6 +107,7 @@
 	let swapStart = 0;
 	let generation = 0;
 	let backArrowBounds: ContentLayout['backArrowBounds'] | null = null;
+	let linkRegions: LinkRegion[] = [];
 	let settleProgress = 0; // 0 = full noise (hero), 1 = settled (content crisp)
 	let settleStart = 0;
 	const SETTLE_DURATION = 800;
@@ -124,6 +125,7 @@
 		selectedNavIndex = null;
 		pendingSwap = null;
 		backArrowBounds = null;
+		linkRegions = [];
 		settleProgress = 0;
 		material.uniforms.uPointSizeMin.value = HERO_POINT_MIN;
 		material.uniforms.uPointSizeMax.value = HERO_POINT_MAX;
@@ -239,6 +241,7 @@
 			(layout) => {
 				if (gen !== generation) return; // stale
 				backArrowBounds = layout.backArrowBounds;
+				linkRegions = layout.links;
 				const now = performance.now();
 				retargetGroupStaggered(
 					allParticles,
@@ -258,6 +261,7 @@
 	function deselectContent() {
 		generation++;
 		backArrowBounds = null;
+		linkRegions = [];
 		selectedNavIndex = null;
 		ctx.selectNav(null);
 		phase = 'swapping';
@@ -350,7 +354,8 @@
 			}
 		}
 
-		const offsetScale = phase === 'content' ? 1 - easeOutCubic(settleProgress) : 1;
+		// Settle to 0.12 (tiny residual noise) instead of 0 for organic feel
+		const offsetScale = phase === 'content' ? 1 - easeOutCubic(settleProgress) * 0.88 : 1;
 
 		// Update GPU buffers
 		let idx = 0;
@@ -369,10 +374,16 @@
 	});
 
 	// ── Event handlers ──
-	function isOverBackArrow(cx: number, cy: number): boolean {
-		if (!backArrowBounds || phase !== 'content') return false;
-		const b = backArrowBounds;
-		return cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
+	function hitTest(cx: number, cy: number, region: { x: number; y: number; w: number; h: number }): boolean {
+		return cx >= region.x && cx <= region.x + region.w && cy >= region.y && cy <= region.y + region.h;
+	}
+
+	function findLink(cx: number, cy: number): LinkRegion | null {
+		if (phase !== 'content') return null;
+		for (const link of linkRegions) {
+			if (hitTest(cx, cy, link)) return link;
+		}
+		return null;
 	}
 
 	function handleMouseMove(e: MouseEvent) {
@@ -382,7 +393,10 @@
 		mouseEverSet = true;
 
 		if (phase === 'content') {
-			renderer.domElement.style.cursor = isOverBackArrow(mouseX, mouseY) ? 'pointer' : 'default';
+			const overInteractive =
+				(backArrowBounds && hitTest(mouseX, mouseY, backArrowBounds)) ||
+				findLink(mouseX, mouseY) !== null;
+			renderer.domElement.style.cursor = overInteractive ? 'pointer' : 'default';
 		} else {
 			const overNav = NAV_TEXTS.some(
 				(_, i) =>
@@ -398,9 +412,18 @@
 		const cx = e.clientX - rect.left;
 		const cy = e.clientY - rect.top;
 
-		// Back arrow click in content mode
-		if (isOverBackArrow(cx, cy)) {
-			deselectContent();
+		if (phase === 'content') {
+			// Back arrow
+			if (backArrowBounds && hitTest(cx, cy, backArrowBounds)) {
+				deselectContent();
+				return;
+			}
+			// Links
+			const link = findLink(cx, cy);
+			if (link) {
+				window.open(link.href, '_blank', 'noopener,noreferrer');
+				return;
+			}
 			return;
 		}
 

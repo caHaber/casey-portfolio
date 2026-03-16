@@ -1,7 +1,7 @@
 import type { Point } from './textMask';
 
 type SpanKind = 'normal' | 'bold' | 'link';
-interface Span { text: string; kind: SpanKind }
+interface Span { text: string; kind: SpanKind; href?: string }
 type BlockKind = 'h1' | 'h2' | 'h3' | 'h4' | 'paragraph' | 'listitem' | 'spacer';
 interface Block { kind: BlockKind; spans: Span[] }
 
@@ -32,7 +32,7 @@ function parseInline(raw: string): Span[] {
 			if (te < 0 || s[te + 1] !== '(') { spans.push({ text: s[0], kind: 'normal' }); s = s.slice(1); continue; }
 			const ue = s.indexOf(')', te + 1);
 			if (ue < 0) { spans.push({ text: s, kind: 'normal' }); break; }
-			spans.push({ text: s.slice(1, te), kind: 'link' });
+			spans.push({ text: s.slice(1, te), kind: 'link', href: s.slice(te + 2, ue) });
 			s = s.slice(ue + 1);
 		}
 	}
@@ -67,7 +67,7 @@ function makeFont(size: number, weight: string): string {
 	return `${weight} ${size}px ${FONT_FAMILY}`;
 }
 
-type Token = { text: string; bold: boolean };
+type Token = { text: string; bold: boolean; href?: string };
 
 function wrapToLines(
 	ctx: CanvasRenderingContext2D,
@@ -85,15 +85,15 @@ function wrapToLines(
 		if (cur.length) { lines.push(cur); cur = []; curX = 0; }
 	}
 
-	function append(text: string, bold: boolean) {
+	function append(text: string, bold: boolean, href?: string) {
 		ctx.font = makeFont(size, bold ? '700' : weight);
 		const w = ctx.measureText(text).width;
 		if (curX + w > maxW && cur.length > 0) flush();
 		const last = cur[cur.length - 1];
-		if (last && last.bold === bold) {
+		if (last && last.bold === bold && last.href === href) {
 			last.text += text;
 		} else {
-			cur.push({ text, bold });
+			cur.push({ text, bold, href });
 		}
 		curX += w;
 	}
@@ -102,10 +102,11 @@ function wrapToLines(
 
 	for (const span of spans) {
 		const bold = span.kind === 'bold';
+		const href = span.href;
 		const words = span.text.split(' ');
 		for (let i = 0; i < words.length; i++) {
 			const w = i < words.length - 1 ? words[i] + ' ' : words[i];
-			if (w) append(w, bold);
+			if (w) append(w, bold, href);
 		}
 	}
 
@@ -113,9 +114,21 @@ function wrapToLines(
 	return lines;
 }
 
+export interface HitRegion {
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+}
+
+export interface LinkRegion extends HitRegion {
+	href: string;
+}
+
 export interface ContentLayout {
 	pixels: Point[];
-	backArrowBounds: { x: number; y: number; w: number; h: number };
+	backArrowBounds: HitRegion;
+	links: LinkRegion[];
 }
 
 export async function renderContentWithTitle(
@@ -158,6 +171,7 @@ export async function renderContentWithTitle(
 
 	// Draw markdown body below title
 	const bodyY = Math.round(titleY + titleSize * 2.8);
+	const links: LinkRegion[] = [];
 	let cy = bodyY;
 	for (const block of parseMarkdown(markdown)) {
 		if (block.kind === 'spacer') { cy += Math.round(baseFontSize * 0.6); continue; }
@@ -172,8 +186,17 @@ export async function renderContentWithTitle(
 			let cx = x0;
 			for (const token of line) {
 				ctx.font = makeFont(size, token.bold ? '700' : weight);
+				const tokenW = ctx.measureText(token.text).width;
 				ctx.fillText(token.text, cx, cy);
-				cx += ctx.measureText(token.text).width;
+
+				if (token.href) {
+					// Draw underline and record hit region
+					const underlineY = cy + size + 2;
+					ctx.fillRect(cx, underlineY, tokenW, Math.max(1, Math.round(size * 0.1)));
+					links.push({ x: cx, y: cy, w: tokenW, h: lineH, href: token.href });
+				}
+
+				cx += tokenW;
 			}
 			cy += lineH;
 		}
@@ -191,7 +214,7 @@ export async function renderContentWithTitle(
 			}
 		}
 	}
-	return { pixels: points, backArrowBounds };
+	return { pixels: points, backArrowBounds, links };
 }
 
 export async function renderMarkdownToPixels(
