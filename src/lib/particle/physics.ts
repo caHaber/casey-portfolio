@@ -46,27 +46,8 @@ export function retargetGroup(
 	particles: Particle[],
 	targets: Point[],
 	now: number,
-	duration: number
-): void {
-	for (let i = 0; i < particles.length; i++) {
-		const target = targets[i % targets.length];
-		const p = particles[i];
-		p.homeX = p.x;
-		p.homeY = p.y;
-		p.targetX = target.x;
-		p.targetY = target.y;
-		p.triggered = true;
-		p.flyStart = now;
-		p.flyDuration = duration;
-	}
-}
-
-export function retargetGroupStaggered(
-	particles: Particle[],
-	targets: Point[],
-	now: number,
 	duration: number,
-	staggerMs: number
+	staggerMs = 0
 ): void {
 	for (let i = 0; i < particles.length; i++) {
 		const target = targets[i % targets.length];
@@ -76,7 +57,7 @@ export function retargetGroupStaggered(
 		p.targetX = target.x;
 		p.targetY = target.y;
 		p.triggered = true;
-		p.flyStart = now + Math.random() * staggerMs;
+		p.flyStart = staggerMs > 0 ? now + Math.random() * staggerMs : now;
 		p.flyDuration = duration;
 	}
 }
@@ -96,6 +77,30 @@ export function resetGroupToInitial(
 		p.flyStart = now + Math.random() * staggerMs;
 		p.flyDuration = duration;
 	}
+}
+
+export function triggerNearMouse(
+	particles: Particle[],
+	mx: number,
+	my: number,
+	radiusSq: number,
+	now: number,
+	cap: number
+): number {
+	let count = 0;
+	for (const p of particles) {
+		if (count >= cap) break;
+		if (!p.triggered) {
+			const dx = p.homeX - mx;
+			const dy = p.homeY - my;
+			if (dx * dx + dy * dy < radiusSq) {
+				p.triggered = true;
+				p.flyStart = now;
+				count++;
+			}
+		}
+	}
+	return count;
 }
 
 /**

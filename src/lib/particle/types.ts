@@ -1,5 +1,7 @@
 export type { Point } from '$lib/utils/textMask';
 
+export type Phase = 'idle' | 'swapping' | 'content';
+
 export interface Particle {
 	homeX: number;
 	homeY: number;
