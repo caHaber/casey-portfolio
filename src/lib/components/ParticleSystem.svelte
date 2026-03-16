@@ -1,240 +1,142 @@
 <script lang="ts">
 	import { useTask, useThrelte } from '@threlte/core';
 	import { T } from '@threlte/core';
-	import { ShaderMaterial, BufferGeometry, BufferAttribute, Points, Vector2 } from 'three';
-	import { interpolateCoolRGB } from '$lib/utils/color';
-	import { rasterizeText, type Point, type TextRasterOptions } from '$lib/utils/textMask';
-	import { navState } from '$lib/stores/nav.svelte';
+	import { Points } from 'three';
+	import { rasterizeText, type TextRasterOptions } from '$lib/utils/textMask';
+	import type { Point, Particle, Phase } from '$lib/particle/types';
+	import {
+		easeOutCubic,
+		makeParticle,
+		retargetGroup,
+		resetGroupToInitial,
+		triggerNearMouse
+	} from '$lib/particle/physics';
+	import { createHeroMaterial } from '$lib/particle/shaders';
+	import { createParticleBuffers } from '$lib/particle/buffers';
+	import { createHitTester } from '$lib/particle/hitRegions';
+	import { getParticleContext } from '$lib/particle/context.svelte';
+	import { renderContentWithTitle } from '$lib/utils/markdownPixels';
+
+	import aboutRaw from '$lib/docs/about.svx?raw';
+	import projectsRaw from '$lib/docs/projects.svx?raw';
+	import writingRaw from '$lib/docs/writing.svx?raw';
+
+	// Matches nav order: Projects (0), Writing (1), About (2)
+	const DOCS = [projectsRaw, writingRaw, aboutRaw];
+	const NAV_TITLES = ['Projects', 'Writing', 'About'];
 
 	// ── Constants ──
-	const CASEY_N = 300000;
-	const NAV_N = 60000;
+	const CASEY_N = 300_000;
+	const NAV_N = 60_000;
 	const MOUSE_RADIUS = 130;
-	const PULSE_RADIUS = MOUSE_RADIUS * 1.2; // wave zone 20% larger than trigger
-	const PULSE_WAVE_SPEED = 0.004; // rad/ms for propagating wave // Old value: 0.004
-	const PULSE_WAVE_AMPLITUDE = 10.72; // size scale ±22% in wave zone// Old value: 0.22
-	const MAX_TRIGGERS_PER_FRAME = 5000; // cap so first hover doesn’t burst all at once
-	const INTRO_FLY = 1250;
-	const SWAP_DURATION = 1000;
+	const PULSE_RADIUS = MOUSE_RADIUS * 1.2;
+	const PULSE_WAVE_SPEED = 0.004;
+	const MAX_TRIGGERS_PER_FRAME = 5_000;
+	const INTRO_FLY = 1_250;
+	const SWAP_DURATION = 1_000;
+	const CONTENT_FLY_DURATION = 1_200;
+	const CONTENT_STAGGER_MS = 400;
+	const RESET_DURATION = 2_600;
+	const RESET_STAGGER_MS = 900;
 	const TOTAL_N = CASEY_N + NAV_N * 3;
 	const NAV_HIT_W = 240;
 	const NAV_HIT_H = 80;
+	const SIZE_PULSE_SPEED = 0.0012;
+	const BASE_FONT = 16;
+	const CONTENT_POINT_MIN = 1.5;
+	const CONTENT_POINT_MAX = 3.5;
+	const HERO_POINT_MIN = 2.0;
+	const HERO_POINT_MAX = 10.0;
+	const RADIUS_SQ = MOUSE_RADIUS * MOUSE_RADIUS;
+	const SETTLE_DURATION = 800;
+	const SETTLE_DELAY = 600;
 
-	// ── Text targets: single place to define "draw this text here" ──
-	/** Hero text (center of screen). Canvas size and center are set in $effect from W,H. */
-	const HERO_TEXT: Omit<TextRasterOptions, 'canvasWidth' | 'canvasHeight' | 'centerX' | 'centerY'> = {
-		text: 'Casey',
-		widthFrac: 0.65,
-		fontWeight: 900,
-		maxSamples: CASEY_N * 2
-	};
+	const HERO_TEXT: Omit<TextRasterOptions, 'canvasWidth' | 'canvasHeight' | 'centerX' | 'centerY'> =
+		{
+			text: 'Casey',
+			widthFrac: 0.65,
+			fontWeight: 900,
+			maxSamples: CASEY_N * 2
+		};
 
-	/** Nav items: label, position hint (xFrac), and fontSize. Actual centerX is measured and clamped. */
 	const NAV_TEXTS = [
 		{ text: 'projects', xFrac: 0.2, yFrac: 0.8, fontSize: 56, maxParticles: NAV_N },
 		{ text: 'writing', xFrac: 0.5, yFrac: 0.8, fontSize: 56, maxParticles: NAV_N },
 		{ text: 'about', xFrac: 0.8, yFrac: 0.8, fontSize: 56, maxParticles: NAV_N }
 	] as const;
 
-	const POSITION_NOISE = 5; // pixels of random offset for organic look
-	const IDLE_ALPHA = 20 / 255; // alpha when not triggered (was 40/255; higher so large points read as blue, not grey)
-	const SIZE_PULSE_SPEED = 0.0012; // rad/ms for individual grow/shrink (~5s period)
-
-	interface Particle {
-		homeX: number;
-		homeY: number;
-		x: number;
-		y: number;
-		targetX: number;
-		targetY: number;
-		offsetX: number;
-		offsetY: number;
-		triggered: boolean;
-		flyStart: number;
-		flyDuration: number;
-		cr: number; // 0–1
-		cg: number;
-		cb: number;
-		twinklePhase: number; // random 0..2π for unsynced individual twinkle
-	}
-
-	function easeOutCubic(x: number): number {
-		return 1 - (1 - x) ** 3;
-	}
-
-	function makeParticle(
-		homeX: number,
-		homeY: number,
-		target: Point,
-		colorT: number,
-		flyDuration: number
-	): Particle {
-		const [r, g, b] = interpolateCoolRGB(Math.max(0, Math.min(1, colorT)));
-		const offsetX = (Math.random() - 0.5) * 2 * POSITION_NOISE;
-		const offsetY = (Math.random() - 0.5) * 2 * POSITION_NOISE;
-		return {
-			homeX,
-			homeY,
-			x: homeX,
-			y: homeY,
-			targetX: target.x,
-			targetY: target.y,
-			offsetX,
-			offsetY,
-			triggered: false,
-			flyStart: 0,
-			flyDuration,
-			cr: r / 255,
-			cg: g / 255,
-			cb: b / 255,
-			twinklePhase: Math.random() * 2 * Math.PI
-		};
-	}
-
-	function retargetGroup(particles: Particle[], targets: Point[], now: number, duration: number) {
-		for (let i = 0; i < particles.length; i++) {
-			const target = targets[i % targets.length];
-			const p = particles[i];
-			p.homeX = p.x;
-			p.homeY = p.y;
-			p.targetX = target.x;
-			p.targetY = target.y;
-			p.triggered = true;
-			p.flyStart = now;
-			p.flyDuration = duration;
-		}
-	}
-
 	// ── Threlte context ──
 	const { size, renderer } = useThrelte();
+	const ctx = getParticleContext();
 
-	// ── GPU buffers (pre-allocated, fixed size) ──
-	const positions = new Float32Array(TOTAL_N * 3);
-	const particleColors = new Float32Array(TOTAL_N * 3);
-	const alphas = new Float32Array(TOTAL_N);
-
-	const pointSizeScales = new Float32Array(TOTAL_N);
-	const sizePhases = new Float32Array(TOTAL_N);
-
-	const geometry = new BufferGeometry();
-	const posAttr = new BufferAttribute(positions, 3);
-	const colorAttr = new BufferAttribute(particleColors, 3);
-	const alphaAttr = new BufferAttribute(alphas, 1);
-	const pointSizeAttr = new BufferAttribute(pointSizeScales, 1);
-	const sizePhaseAttr = new BufferAttribute(sizePhases, 1);
-	geometry.setAttribute('position', posAttr);
-	geometry.setAttribute('particleColor', colorAttr);
-	geometry.setAttribute('alpha', alphaAttr);
-	geometry.setAttribute('pointSizeScale', pointSizeAttr);
-	geometry.setAttribute('sizePhase', sizePhaseAttr);
-	geometry.setDrawRange(0, 0); // nothing renders until initialized
-
-	const vertexShader = /* glsl */ `
-		attribute float alpha;
-		attribute vec3 particleColor;
-		attribute float pointSizeScale;
-		attribute float sizePhase;
-		varying vec4 vColor;
-		uniform float uPointSizeMin;
-		uniform float uPointSizeMax;
-		uniform float uSizeTime;
-		uniform vec2 uMouse;
-		uniform float uPulseRadius;
-		uniform float uPulseTime;
-		uniform float uPulseWaveAmplitude;
-
-		void main() {
-			vColor = vec4(particleColor, alpha);
-			vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-			pos.y = -pos.y;
-			gl_Position = pos;
-			float baseSize = uPointSizeMin + pointSizeScale * (uPointSizeMax - uPointSizeMin);
-			float sizeAnim = 0.5 + 0.5 * sin(uSizeTime + sizePhase);
-			gl_PointSize = baseSize * sizeAnim;
-
-			// Life-like wave: propagate from mouse, soft falloff at pulse radius (20% beyond trigger)
-			float dist = length(position.xy - uMouse);
-			float inZone = 1.0 - smoothstep(uPulseRadius * 0.65, uPulseRadius, dist);
-			float wave = sin(uPulseTime - dist * 0.035) * uPulseWaveAmplitude * inZone;
-			gl_PointSize *= 1.0 + wave;
-		}
-	`;
-
-	const fragmentShader = /* glsl */ `
-		varying vec4 vColor;
-
-		void main() {
-			vec2 uv = gl_PointCoord - 0.5;
-			if (length(uv) > 0.5) discard;
-			gl_FragColor = vColor;
-		}
-	`;
-
-	const material = new ShaderMaterial({
-		vertexShader,
-		fragmentShader,
-		transparent: true,
-		depthWrite: false,
-		uniforms: {
-			uPointSizeMin: { value: 2.0 },
-			uPointSizeMax: { value: 10.0 },
-			uSizeTime: { value: 0.0 },
-			uMouse: { value: new Vector2(-1000, -1000) },
-			uPulseRadius: { value: PULSE_RADIUS },
-			uPulseTime: { value: 0.0 },
-			uPulseWaveAmplitude: { value: PULSE_WAVE_AMPLITUDE }
-		}
-	});
-
-	const pointsMesh = new Points(geometry, material);
+	// ── GPU buffers & material ──
+	const buffers = createParticleBuffers(TOTAL_N);
+	const material = createHeroMaterial(PULSE_RADIUS);
+	const pointsMesh = new Points(buffers.geometry, material);
+	const hitTester = createHitTester();
 
 	// ── Particle state (rebuilt on resize) ──
 	let caseyParticles: Particle[] = [];
 	let navParticles: Particle[][] = [[], [], []];
-	let navCx: number[] = [0, 0, 0];
-	let navCy = 0;
+	let allParticles: Particle[] = [];
 
-	// Precomputed pixel sets
 	let caseyHeroPixels: Point[] = [];
 	let navScalePixels: Point[][] = [[], [], []];
-	let heroNavPixels: Point[][] = [[], [], []];
-	let navCaseyPixels: Point[][] = [[], [], []];
 
-	// Render state
-	type Phase = 'idle' | 'swapping' | 'swapped';
 	let phase: Phase = 'idle';
 	let selectedNavIndex: number | null = null;
 	let pendingSwap: number | null = null;
 	let swapStart = 0;
+	let generation = 0;
+	let settleProgress = 0;
+	let settleStart = 0;
 
-	const RADIUS_SQ = MOUSE_RADIUS * MOUSE_RADIUS;
 	let mouseX = -MOUSE_RADIUS * 2;
 	let mouseY = -MOUSE_RADIUS * 2;
 	let mouseEverSet = false;
 
-	// ── Initialize particles on size change ──
+	// ── Reset effect ──
+	$effect(() => {
+		const trigger = ctx.resetCount;
+		if (trigger === 0 || caseyParticles.length === 0) return;
+		phase = 'idle';
+		selectedNavIndex = null;
+		pendingSwap = null;
+		settleProgress = 0;
+		material.uniforms.uPointSizeMin.value = HERO_POINT_MIN;
+		material.uniforms.uPointSizeMax.value = HERO_POINT_MAX;
+		ctx.selectNav(null);
+		hitTester.clearContentRegions();
+		const now = performance.now();
+		resetGroupToInitial(caseyParticles, now, RESET_DURATION, RESET_STAGGER_MS);
+		for (const group of navParticles) {
+			resetGroupToInitial(group, now, RESET_DURATION, RESET_STAGGER_MS);
+		}
+	});
+
+	// ── Initialize on resize ──
 	$effect(() => {
 		const W = $size.width;
 		const H = $size.height;
 		if (W <= 0 || H <= 0) return;
 
-		// Reset render state
 		phase = 'idle';
 		selectedNavIndex = null;
 		pendingSwap = null;
-		navState.selectedIndex = null;
+		ctx.selectNav(null);
+		hitTester.clearContentRegions();
 
-		// Measure nav label positions (clamp so text stays on screen)
 		const measureCtx = document.createElement('canvas').getContext('2d')!;
-		navCy = H * NAV_TEXTS[0].yFrac;
-		navCx = NAV_TEXTS.map((item) => {
+		const navCy = H * NAV_TEXTS[0].yFrac;
+		const navCx = NAV_TEXTS.map((item) => {
 			measureCtx.font = `100 ${item.fontSize}px system-ui, -apple-system, sans-serif`;
 			const textW = measureCtx.measureText(item.text).width;
 			const rawX = W * item.xFrac;
 			return Math.max(textW / 2 + 10, Math.min(W - textW / 2 - 10, rawX));
 		});
 
-		// Rasterize all text targets (single API: "draw this text here")
+		hitTester.setNavRegions(navCx, navCy, NAV_HIT_W, NAV_HIT_H);
+
 		caseyHeroPixels = rasterizeText({
 			...HERO_TEXT,
 			canvasWidth: W,
@@ -255,82 +157,75 @@
 			})
 		);
 
-		heroNavPixels = NAV_TEXTS.map((item) =>
-			rasterizeText({
-				text: item.text,
-				canvasWidth: W,
-				canvasHeight: H,
-				centerX: W / 2,
-				centerY: H * 0.38,
-				widthFrac: 0.65,
-				maxSamples: item.maxParticles * 2
-			})
-		);
-
-		navCaseyPixels = navCx.map((cx, i) =>
-			rasterizeText({
-				text: 'CASEY',
-				canvasWidth: W,
-				canvasHeight: H,
-				centerX: cx,
-				centerY: navCy,
-				fontSize: Math.floor(NAV_TEXTS[i].fontSize * 0.75),
-				maxSamples: CASEY_N
-			})
-		);
-
-		// Create casey particles
 		caseyParticles = Array.from({ length: CASEY_N }, (_, i) => {
 			const target = caseyHeroPixels[i % caseyHeroPixels.length];
 			return makeParticle(Math.random() * W, Math.random() * H, target, target.x / W, INTRO_FLY);
 		});
 
-		// Create nav particles
 		navParticles = NAV_TEXTS.map((_, ni) => {
 			const pixels = navScalePixels[ni];
 			return Array.from({ length: NAV_N }, (_, i) => {
 				const target = pixels[i % pixels.length];
-				const colorT = ni / (NAV_TEXTS.length - 1);
-				return makeParticle(Math.random() * W, Math.random() * H, target, colorT, INTRO_FLY);
+				return makeParticle(
+					Math.random() * W,
+					Math.random() * H,
+					target,
+					ni / (NAV_TEXTS.length - 1),
+					INTRO_FLY
+				);
 			});
 		});
 
-		// Set initial GPU buffer values
-		let idx = 0;
-		for (const p of caseyParticles) {
-			positions[idx * 3] = p.homeX + p.offsetX;
-			positions[idx * 3 + 1] = p.homeY + p.offsetY;
-			positions[idx * 3 + 2] = 0;
-			particleColors[idx * 3] = 96 / 255;
-			particleColors[idx * 3 + 1] = 128 / 255;
-			particleColors[idx * 3 + 2] = 192 / 255;
-			alphas[idx] = IDLE_ALPHA;
-			pointSizeScales[idx] = Math.random();
-			sizePhases[idx] = Math.random() * 6.28318530718;
-			idx++;
-		}
-		for (const group of navParticles) {
-			for (const p of group) {
-				positions[idx * 3] = p.homeX + p.offsetX;
-				positions[idx * 3 + 1] = p.homeY + p.offsetY;
-				positions[idx * 3 + 2] = 0;
-				particleColors[idx * 3] = 96 / 255;
-				particleColors[idx * 3 + 1] = 128 / 255;
-				particleColors[idx * 3 + 2] = 192 / 255;
-				alphas[idx] = IDLE_ALPHA;
-				pointSizeScales[idx] = Math.random();
-				sizePhases[idx] = Math.random() * 6.28318530718;
-				idx++;
-			}
-		}
-
-		posAttr.needsUpdate = true;
-		colorAttr.needsUpdate = true;
-		alphaAttr.needsUpdate = true;
-		pointSizeAttr.needsUpdate = true;
-		sizePhaseAttr.needsUpdate = true;
-		geometry.setDrawRange(0, TOTAL_N);
+		allParticles = [...caseyParticles, ...navParticles.flat()];
+		buffers.uploadInitial(allParticles);
+		buffers.activate(TOTAL_N);
 	});
+
+	// ── Nav selection: render content and retarget all particles ──
+	function selectContent(navIdx: number) {
+		const W = $size.width;
+		const H = $size.height;
+		generation++;
+		const gen = generation;
+		selectedNavIndex = navIdx;
+		ctx.selectNav(navIdx);
+		phase = 'swapping';
+		swapStart = performance.now();
+
+		const displayW = Math.min(520, Math.round(W * 0.8));
+		const x0 = Math.round((W - displayW) / 2);
+
+		renderContentWithTitle(NAV_TITLES[navIdx], DOCS[navIdx], W, H, x0, displayW, BASE_FONT).then(
+			(layout) => {
+				if (gen !== generation) return;
+				hitTester.setContentRegions(layout.backArrowBounds, layout.links);
+				const now = performance.now();
+				retargetGroup(allParticles, layout.pixels, now, CONTENT_FLY_DURATION, CONTENT_STAGGER_MS);
+				settleProgress = 0;
+				settleStart = now + SETTLE_DELAY;
+				phase = 'content';
+			}
+		);
+	}
+
+	function deselectContent() {
+		generation++;
+		hitTester.clearContentRegions();
+		selectedNavIndex = null;
+		ctx.selectNav(null);
+		phase = 'swapping';
+		settleProgress = 0;
+		swapStart = performance.now();
+		const now = performance.now();
+
+		material.uniforms.uPointSizeMin.value = HERO_POINT_MIN;
+		material.uniforms.uPointSizeMax.value = HERO_POINT_MAX;
+
+		retargetGroup(caseyParticles, caseyHeroPixels, now, SWAP_DURATION);
+		for (let i = 0; i < navParticles.length; i++) {
+			retargetGroup(navParticles[i], navScalePixels[i], now, SWAP_DURATION);
+		}
+	}
 
 	// ── Animation loop ──
 	useTask(() => {
@@ -342,145 +237,47 @@
 		material.uniforms.uMouse.value.set(mouseX, mouseY);
 		material.uniforms.uPulseTime.value = now * PULSE_WAVE_SPEED;
 
-		// Mouse trigger (capped per frame so first hover isn’t one big burst)
-		if (mouseEverSet) {
-			let triggeredThisFrame = 0;
-			for (const p of caseyParticles) {
-				if (triggeredThisFrame >= MAX_TRIGGERS_PER_FRAME) break;
-				if (!p.triggered) {
-					const dx = p.homeX - mouseX;
-					const dy = p.homeY - mouseY;
-					if (dx * dx + dy * dy < RADIUS_SQ) {
-						p.triggered = true;
-						p.flyStart = now;
-						triggeredThisFrame++;
-					}
-				}
-			}
+		// Mouse trigger (capped per frame to avoid first-hover burst)
+		if (mouseEverSet && phase !== 'content') {
+			let remaining = MAX_TRIGGERS_PER_FRAME;
+			remaining -= triggerNearMouse(caseyParticles, mouseX, mouseY, RADIUS_SQ, now, remaining);
 			for (const group of navParticles) {
-				for (const p of group) {
-					if (triggeredThisFrame >= MAX_TRIGGERS_PER_FRAME) break;
-					if (!p.triggered) {
-						const dx = p.homeX - mouseX;
-						const dy = p.homeY - mouseY;
-						if (dx * dx + dy * dy < RADIUS_SQ) {
-							p.triggered = true;
-							p.flyStart = now;
-							triggeredThisFrame++;
-						}
-					}
-				}
+				if (remaining <= 0) break;
+				remaining -= triggerNearMouse(group, mouseX, mouseY, RADIUS_SQ, now, remaining);
 			}
 		}
 
-		// Process swap
+		// Process pending nav swap
 		if (pendingSwap !== null) {
 			const swapIdx = pendingSwap;
 			pendingSwap = null;
-			swapStart = now;
-			phase = 'swapping';
 
 			if (swapIdx === selectedNavIndex) {
-				retargetGroup(caseyParticles, caseyHeroPixels, now, SWAP_DURATION);
-				retargetGroup(navParticles[swapIdx], navScalePixels[swapIdx], now, SWAP_DURATION);
-				selectedNavIndex = null;
-				navState.selectedIndex = null;
+				deselectContent();
 			} else {
-				if (selectedNavIndex !== null) {
-					retargetGroup(
-						navParticles[selectedNavIndex],
-						navScalePixels[selectedNavIndex],
-						now,
-						SWAP_DURATION
-					);
-				}
-				retargetGroup(caseyParticles, navCaseyPixels[swapIdx], now, SWAP_DURATION);
-				retargetGroup(navParticles[swapIdx], heroNavPixels[swapIdx], now, SWAP_DURATION);
-				selectedNavIndex = swapIdx;
-				navState.selectedIndex = swapIdx;
+				selectContent(swapIdx);
 			}
 		}
 
 		if (phase === 'swapping' && now > swapStart + SWAP_DURATION + 200) {
-			phase = selectedNavIndex !== null ? 'swapped' : 'idle';
+			phase = selectedNavIndex !== null ? 'content' : 'idle';
 		}
 
-		// Update GPU buffers
-		let idx = 0;
-		for (const p of caseyParticles) {
-			let px: number, py: number, alpha: number;
-			if (!p.triggered) {
-				px = p.homeX;
-				py = p.homeY;
-				particleColors[idx * 3] = 96 / 255;
-				particleColors[idx * 3 + 1] = 128 / 255;
-				particleColors[idx * 3 + 2] = 192 / 255;
-				alpha = IDLE_ALPHA;
-			} else {
-				const elapsed = now - p.flyStart;
-				const t = Math.min(elapsed / p.flyDuration, 1.0);
-				const et = easeOutCubic(t);
-				px = p.homeX + (p.targetX - p.homeX) * et;
-				py = p.homeY + (p.targetY - p.homeY) * et;
-				p.x = px;
-				p.y = py;
-				particleColors[idx * 3] = p.cr;
-				particleColors[idx * 3 + 1] = p.cg;
-				particleColors[idx * 3 + 2] = p.cb;
-				// if (t < 1.0) {
-				// 	alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
-				// } else {
-					// Individual twinkle: wider range and slightly faster so it’s more noticeable
-					const twinkle = 0.3 + 0.7 * Math.sin(now * 0.0012 + p.twinklePhase);
-					alpha = twinkle * 0.4;
-				// }
-			}
-			positions[idx * 3] = px + p.offsetX;
-			positions[idx * 3 + 1] = py + p.offsetY;
-			positions[idx * 3 + 2] = 0;
-			alphas[idx] = alpha;
-			idx++;
-		}
-		for (const group of navParticles) {
-			for (const p of group) {
-				let px: number, py: number, alpha: number;
-				if (!p.triggered) {
-					px = p.homeX;
-					py = p.homeY;
-					particleColors[idx * 3] = 96 / 255;
-					particleColors[idx * 3 + 1] = 128 / 255;
-					particleColors[idx * 3 + 2] = 192 / 255;
-					alpha = IDLE_ALPHA;
-				} else {
-					const elapsed = now - p.flyStart;
-					const t = Math.min(elapsed / p.flyDuration, 1.0);
-					const et = easeOutCubic(t);
-					px = p.homeX + (p.targetX - p.homeX) * et;
-					py = p.homeY + (p.targetY - p.homeY) * et;
-					p.x = px + Math.random() * 100;
-					p.y = py + Math.random() * 100;
-					particleColors[idx * 3] = p.cr;
-					particleColors[idx * 3 + 1] = p.cg;
-					particleColors[idx * 3 + 2] = p.cb;
-					// if (t < 1.0) {
-					// 	alpha = (IDLE_ALPHA * 255 + et * (255 - IDLE_ALPHA * 255)) / 255;
-					// } else {
-						// Individual twinkle: wider range and slightly faster so it’s more noticeable
-						const twinkle = 0.3 + 0.7 * Math.sin(now * 0.0012 + p.twinklePhase);
-						alpha = twinkle * 0.4;
-					// }
-				}
-				positions[idx * 3] = px + p.offsetX;
-				positions[idx * 3 + 1] = py + p.offsetY;
-				positions[idx * 3 + 2] = 0;
-				alphas[idx] = alpha;
-				idx++;
+		// Animate settle progress (offsets shrink, text becomes crisp)
+		if (phase === 'content' && settleProgress < 1) {
+			const elapsed = now - settleStart;
+			if (elapsed > 0) {
+				settleProgress = Math.min(elapsed / SETTLE_DURATION, 1);
+				const s = easeOutCubic(settleProgress);
+				material.uniforms.uPointSizeMin.value =
+					HERO_POINT_MIN + (CONTENT_POINT_MIN - HERO_POINT_MIN) * s;
+				material.uniforms.uPointSizeMax.value =
+					HERO_POINT_MAX + (CONTENT_POINT_MAX - HERO_POINT_MAX) * s;
 			}
 		}
 
-		posAttr.needsUpdate = true;
-		colorAttr.needsUpdate = true;
-		alphaAttr.needsUpdate = true;
+		const offsetScale = phase === 'content' ? 1 - easeOutCubic(settleProgress) * 0.88 : 1;
+		buffers.uploadFrame(allParticles, now, offsetScale);
 	});
 
 	// ── Event handlers ──
@@ -490,24 +287,32 @@
 		mouseY = e.clientY - rect.top;
 		mouseEverSet = true;
 
-		const overNav =
-			NAV_TEXTS.some(
-				(_, i) =>
-					Math.abs(mouseX - navCx[i]) < NAV_HIT_W / 2 && Math.abs(mouseY - navCy) < NAV_HIT_H / 2
-			);
-		renderer.domElement.style.cursor = overNav ? 'pointer' : 'default';
+		const over = hitTester.isOverInteractive(mouseX, mouseY, phase);
+		renderer.domElement.style.cursor = over ? 'pointer' : 'default';
 	}
 
 	function handleClick(e: MouseEvent) {
-		// if (phase === 'swapping') return;
 		const rect = renderer.domElement.getBoundingClientRect();
 		const cx = e.clientX - rect.left;
 		const cy = e.clientY - rect.top;
 
-		for (let i = 0; i < NAV_TEXTS.length; i++) {
-			if (Math.abs(cx - navCx[i]) < NAV_HIT_W / 2 && Math.abs(cy - navCy) < NAV_HIT_H / 2) {
-				pendingSwap = i;
-				break;
+		if (phase === 'content') {
+			if (hitTester.hitBackArrow(cx, cy)) {
+				deselectContent();
+				return;
+			}
+			const link = hitTester.hitLink(cx, cy);
+			if (link) {
+				window.open(link.href, '_blank', 'noopener,noreferrer');
+				return;
+			}
+			return;
+		}
+
+		if (phase === 'idle') {
+			const navIdx = hitTester.hitNav(cx, cy);
+			if (navIdx !== null) {
+				pendingSwap = navIdx;
 			}
 		}
 	}
@@ -524,7 +329,7 @@
 
 	$effect(() => {
 		return () => {
-			geometry.dispose();
+			buffers.dispose();
 			material.dispose();
 		};
 	});
