@@ -22,7 +22,7 @@ export interface TextRasterOptions {
 	maxSamples?: number;
 }
 
-const DEFAULT_FONT = 'system-ui, -apple-system, sans-serif';
+const DEFAULT_FONT = "'Space Grotesk', system-ui, -apple-system, sans-serif";
 
 /**
  * Rasterizes text at the given position and returns pixel coordinates inside the glyphs.
@@ -80,42 +80,3 @@ export function rasterizeText(options: TextRasterOptions): Point[] {
 	return Array.from({ length: maxSamples }, (_, i) => pixels[Math.floor(i * step)]);
 }
 
-/** @deprecated Use rasterizeText() instead */
-export function getTextPixelsAt(
-	text: string,
-	centerX: number,
-	centerY: number,
-	fontSize: number,
-	canvasWidth: number,
-	canvasHeight: number,
-	maxSamples = 3000
-): Point[] {
-	return rasterizeText({
-		text,
-		canvasWidth,
-		canvasHeight,
-		centerX,
-		centerY,
-		fontSize,
-		maxSamples
-	});
-}
-
-/** @deprecated Use rasterizeText() instead */
-export function getTextPixels(
-	text: string,
-	canvasWidth: number,
-	canvasHeight: number,
-	maxSamples = 60000
-): Point[] {
-	return rasterizeText({
-		text,
-		canvasWidth,
-		canvasHeight,
-		centerX: canvasWidth / 2,
-		centerY: canvasHeight * 0.38,
-		widthFrac: 0.65,
-		fontWeight: 900,
-		maxSamples
-	});
-}
