@@ -5,10 +5,13 @@ import adapter from '@sveltejs/adapter-vercel';
 const config = {
 	kit: { adapter: adapter() },
 	vitePlugin: {
-		dynamicCompileOptions: ({ filename }) =>
-			filename.includes('node_modules') ? undefined : { runes: true }
+		dynamicCompileOptions: ({ filename }) => {
+			if (filename.includes('node_modules')) return undefined;
+			if (filename.endsWith('.md') || filename.endsWith('.svx')) return { runes: false };
+			return { runes: true };
+		}
 	},
-	preprocess: [mdsvex()],
+	preprocess: [mdsvex({extensions: ['.md']})],
 	extensions: ['.svelte', '.svx', '.md']
 };
 

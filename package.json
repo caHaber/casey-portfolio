@@ -11,7 +11,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"build:resume": "node scripts/build-resume.mjs"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.2",
@@ -24,9 +25,11 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.14.0",
 		"globals": "^17.3.0",
+		"marked": "^18.0.2",
 		"mdsvex": "^0.12.6",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.4.1",
+		"puppeteer": "^24.42.0",
 		"svelte": "^5.51.0",
 		"svelte-check": "^4.4.2",
 		"typescript": "^5.9.3",
@@ -39,5 +42,8 @@
 		"@threlte/flex": "^2.2.0",
 		"@types/three": "^0.183.1",
 		"three": "^0.183.2"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": ["puppeteer"]
 	}
 }

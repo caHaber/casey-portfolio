@@ -6,11 +6,174 @@
 
 html,
 body {
-	height: 100%;
-	overflow: hidden;
-	background: #0a0a0a;
-	color: #fff;
-	font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+	min-height: 100%;
+	overflow-x: hidden;
+	background: #f5f0e8;
+	color: #1a1a1a;
+	font-family: Parclo Serif, system-ui, -apple-system, sans-serif;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+}
+
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Thin.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Thin.woff') format('woff');
+	font-weight: 100;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-ThinItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-ThinItalic.woff') format('woff');
+	font-weight: 100;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Light.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Light.woff') format('woff');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-LightItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-LightItalic.woff') format('woff');
+	font-weight: 300;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Regular.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Regular.woff') format('woff');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Italic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Italic.woff') format('woff');
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Medium.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Medium.woff') format('woff');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-MediumItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-MediumItalic.woff') format('woff');
+	font-weight: 500;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-SemiBold.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-SemiBold.woff') format('woff');
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-SemiBoldItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-SemiBoldItalic.woff') format('woff');
+	font-weight: 600;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Bold.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Bold.woff') format('woff');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-BoldItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-BoldItalic.woff') format('woff');
+	font-weight: 700;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Black.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Black.woff') format('woff');
+	font-weight: 800;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-BlackItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-BlackItalic.woff') format('woff');
+	font-weight: 800;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-ExtraBlack.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-ExtraBlack.woff') format('woff');
+	font-weight: 900;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-ExtraBlackItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-ExtraBlackItalic.woff') format('woff');
+	font-weight: 900;
+	font-style: italic;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-Ultra.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-Ultra.woff') format('woff');
+	font-weight: 950;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Parclo Serif';
+	src:
+		url('/fonts/Parclo/ParcloSerif-UltraItalic.woff2') format('woff2'),
+		url('/fonts/Parclo/ParcloSerif-UltraItalic.woff') format('woff');
+	font-weight: 950;
+	font-style: italic;
+	font-display: swap;
 }

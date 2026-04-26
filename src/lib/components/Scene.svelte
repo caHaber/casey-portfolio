@@ -6,7 +6,7 @@
 	const { size, renderer } = useThrelte();
 
 	$effect(() => {
-		renderer.setClearColor(0x0a0a0a, 1);
+		renderer.setClearColor(0xf5f0e8, 1);
 	});
 </script>
 

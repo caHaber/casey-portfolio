@@ -7,10 +7,14 @@ export interface ParticleContext {
 	readonly selectedIndex: number | null;
 	/** Increments each time reset() is called. React to this in $effect to trigger reset logic. */
 	readonly resetCount: number;
+	/** DOM element currently hovered (the [data-particle-header] node), or null. Overrides scroll. */
+	readonly hoveredHeader: HTMLElement | null;
 	/** Select a nav item by index, or pass null to return to hero state. */
 	selectNav(index: number | null): void;
 	/** Request particles to reset to their initial scatter positions. */
 	reset(): void;
+	/** Notify the particle system which header element (if any) is being hovered. */
+	setHovered(el: HTMLElement | null): void;
 }
 
 /**
@@ -21,6 +25,7 @@ export interface ParticleContext {
 export function createParticleContext(): ParticleContext {
 	let selectedIndex = $state<number | null>(null);
 	let resetCount = $state(0);
+	let hoveredHeader = $state<HTMLElement | null>(null);
 
 	const ctx: ParticleContext = {
 		get selectedIndex() {
@@ -29,11 +34,17 @@ export function createParticleContext(): ParticleContext {
 		get resetCount() {
 			return resetCount;
 		},
+		get hoveredHeader() {
+			return hoveredHeader;
+		},
 		selectNav(index) {
 			selectedIndex = index;
 		},
 		reset() {
 			resetCount++;
+		},
+		setHovered(el) {
+			hoveredHeader = el;
 		}
 	};
 

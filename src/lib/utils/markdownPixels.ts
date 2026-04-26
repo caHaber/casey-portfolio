@@ -8,7 +8,7 @@ interface Span { text: string; kind: SpanKind; href?: string }
 type BlockKind = 'h1' | 'h2' | 'h3' | 'h4' | 'paragraph' | 'listitem' | 'spacer';
 interface Block { kind: BlockKind; spans: Span[] }
 
-const FONT_FAMILY = "'Silkscreen', monospace";
+const FONT_FAMILY = "Parclo Serif, system-ui, -apple-system, sans-serif";
 
 function parseInline(raw: string): Span[] {
 	const spans: Span[] = [];

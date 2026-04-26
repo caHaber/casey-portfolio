@@ -1,15 +1,14 @@
-// Cool palette stops from d3-scale-chromatic.
+// Medium-blue palette for warm beige background: readable but not too dark.
 const STOPS: [number, number, number][] = [
-	[0x6e, 0x40, 0xaa], // #6e40aa — purple
-	[0xbf, 0x3c, 0xaf], // #bf3caf — pink-purple
-	[0xfe, 0x4b, 0x83], // #fe4b83 — pink
-	[0xff, 0x78, 0x47], // #ff7847 — orange
-	[0xe2, 0xb7, 0x2f], // #e2b72f — yellow
-	[0xaf, 0xf0, 0x5b] //  #aff05b — yellow-green
+	[0x2b, 0x5c, 0x8a], // #2b5c8a — medium navy
+	[0x3a, 0x7c, 0xa5], // #3a7ca5 — steel blue
+	[0x35, 0x8b, 0x9e], // #358b9e — teal
+	[0x48, 0x96, 0xaa], // #4896aa — ocean
+	[0x2e, 0x72, 0x8f], // #2e728f — blue teal
+	[0x3d, 0x68, 0x87] // #3d6887 — slate blue
 ];
 
-
-/** Maps t ∈ [0, 1] to an [r, g, b] tuple using the cool palette. */
+/** Maps t ∈ [0, 1] to an [r, g, b] tuple using the ocean palette. */
 export function interpolateCoolRGB(t: number): [number, number, number] {
 	const clamped = Math.max(0, Math.min(1, t));
 	const n = STOPS.length - 1;
@@ -25,7 +24,7 @@ export function interpolateCoolRGB(t: number): [number, number, number] {
 	];
 }
 
-/** Maps t ∈ [0, 1] to a CSS rgb() string. */
+/** Maps t ∈ [0, 1] to a CSS rgb() string using the ocean palette. */
 export function interpolateCool(t: number): string {
 	const [r, g, b] = interpolateCoolRGB(t);
 	return `rgb(${r},${g},${b})`;

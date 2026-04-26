@@ -39,10 +39,10 @@ export function createParticleBuffers(totalCount: number): ParticleBuffers {
 				positions[idx * 3] = p.homeX + p.offsetX;
 				positions[idx * 3 + 1] = p.homeY + p.offsetY;
 				positions[idx * 3 + 2] = 0;
-				particleColors[idx * 3] = 96 / 255;
-				particleColors[idx * 3 + 1] = 128 / 255;
-				particleColors[idx * 3 + 2] = 192 / 255;
-				alphas[idx] = 20 / 255;
+				particleColors[idx * 3] = 190 / 255;
+				particleColors[idx * 3 + 1] = 180 / 255;
+				particleColors[idx * 3 + 2] = 165 / 255;
+				alphas[idx] = 0.1;
 				pointSizeScales[idx] = Math.random();
 				sizePhases[idx] = Math.random() * 6.28318530718;
 			}

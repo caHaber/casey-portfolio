@@ -3,8 +3,8 @@ import type { Particle, Point } from './types';
 
 const POSITION_NOISE = 5;
 
-export const IDLE_ALPHA = 20 / 255;
-export const IDLE_COLOR: [number, number, number] = [96 / 255, 128 / 255, 192 / 255];
+export const IDLE_ALPHA = 0.1;
+export const IDLE_COLOR: [number, number, number] = [190 / 255, 180 / 255, 165 / 255];
 export const AT_INITIAL_EPS = 2;
 
 export function easeOutCubic(x: number): number {
@@ -56,6 +56,33 @@ export function retargetGroup(
 		p.homeY = p.y;
 		p.targetX = target.x;
 		p.targetY = target.y;
+		p.triggered = true;
+		p.flyStart = staggerMs > 0 ? now + Math.random() * staggerMs : now;
+		p.flyDuration = duration;
+	}
+}
+
+/**
+ * Retarget each particle to a random point in a disc around its CURRENT position.
+ * Used for the "puff" phase of a header→header transition: the old shape
+ * dissolves into a cloud before crystallizing into the new shape.
+ */
+export function scatterGroup(
+	particles: Particle[],
+	now: number,
+	radius: number,
+	duration: number,
+	staggerMs: number
+): void {
+	for (const p of particles) {
+		const angle = Math.random() * Math.PI * 2;
+		// Bias toward the outer half of the radius so particles actually disperse
+		// rather than clumping at their start.
+		const r = radius * (0.4 + Math.random() * 0.6);
+		p.homeX = p.x;
+		p.homeY = p.y;
+		p.targetX = p.x + Math.cos(angle) * r;
+		p.targetY = p.y + Math.sin(angle) * r;
 		p.triggered = true;
 		p.flyStart = staggerMs > 0 ? now + Math.random() * staggerMs : now;
 		p.flyDuration = duration;

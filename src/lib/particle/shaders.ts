@@ -54,7 +54,7 @@ export function createHeroMaterial(pulseRadius: number): ShaderMaterial {
 			uMouse: { value: new Vector2(-1000, -1000) },
 			uPulseRadius: { value: pulseRadius },
 			uPulseTime: { value: 0.0 },
-			uPulseWaveAmplitude: { value: 10.72 }
+			uPulseWaveAmplitude: { value: -10.72 }
 		}
 	});
 }
