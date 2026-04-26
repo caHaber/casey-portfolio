@@ -13,7 +13,7 @@
 
 	// ── Constants ──
 	const HERO_N = 80_000;
-	const BIO_N = 55_000;
+	const BIO_N = 75_000;
 	const HAND_N = 10_000;
 	const TOTAL_N = HERO_N + BIO_N + HAND_N;
 	const MOUSE_RADIUS = 130;
@@ -35,7 +35,7 @@
 		};
 
 	const BIO_BLURB =
-		"A decade of leading data visualization experiences — from research tools, to enterprise BI, to maintaining libraries serving millions. I build the libraries underneath the products. A systems-first engineer who likes charts.";
+		"I'm a platform engineer with a decade of leading data visualization experiences — from research tools, to enterprise BI, to maintaining libraries that serve millions. Part product lead, part systems architect, mostly chart enthusiast.";
 
 	// ── Threlte context ──
 	const { size } = useThrelte();
@@ -105,7 +105,11 @@
 		ctx.fillStyle = '#000';
 		ctx.fillRect(0, 0, canvasW, canvasH);
 
-		ctx.font = `300 ${fontSize}px ${BIO_FONT}`;
+		ctx.font = `500 ${fontSize}px ${BIO_FONT}`;
+		// Slight negative tracking — keeps the eye moving across the line and
+		// reads better at the size pixels resolve to. Set BEFORE measureText so
+		// word-wrap accounts for the tighter glyphs.
+		ctx.letterSpacing = '-0.4px';
 		ctx.fillStyle = '#fff';
 		ctx.textAlign = 'left';
 		ctx.textBaseline = 'top';
@@ -239,9 +243,10 @@
 			if (p.y > heroMaxY) heroMaxY = p.y;
 		}
 
-		// Bio text — left-aligned below hero, word-wrapped
-		const bioFontSize = Math.round(Math.min(W, H) * 0.0234);
-		const bioMaxW = Math.min(480, Math.round(W * 0.45));
+		// Bio text — left-aligned below hero, word-wrapped. Slightly larger
+		// font + medium weight so glyph strokes survive the size-pulse trough.
+		const bioFontSize = Math.round(Math.min(W, H) * 0.028);
+		const bioMaxW = Math.min(540, Math.round(W * 0.5));
 		const bioY = heroMaxY + Math.round(H * 0.06);
 		const bioPixels = rasterizeBio(
 			BIO_BLURB,

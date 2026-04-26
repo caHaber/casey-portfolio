@@ -56,6 +56,11 @@
 		font-family: 'Parclo Serif', serif;
 		color: #1a1a1a;
 		line-height: 1.7;
+		/* Soft halo around glyphs so particles can still show between text
+		   without fighting the type for legibility. Inherited by descendants. */
+		text-shadow:
+			0 0 6px rgba(245, 240, 232, 0.95),
+			0 0 12px rgba(245, 240, 232, 0.7);
 	}
 
 	.portfolio::before {
