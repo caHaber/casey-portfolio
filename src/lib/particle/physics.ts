@@ -155,7 +155,10 @@ export function writeParticleToBuffers(
 		alpha = IDLE_ALPHA;
 	} else {
 		const elapsed = now - p.flyStart;
-		const t = Math.min(elapsed / p.flyDuration, 1.0);
+		// Clamp t >= 0 so staggered particles (flyStart in the future) sit at
+		// their home position until their start time, instead of overshooting
+		// backwards via a negative t into easeOutCubic.
+		const t = Math.max(0, Math.min(elapsed / p.flyDuration, 1.0));
 		const et = easeOutCubic(t);
 		px = p.homeX + (p.targetX - p.homeX) * et;
 		py = p.homeY + (p.targetY - p.homeY) * et;

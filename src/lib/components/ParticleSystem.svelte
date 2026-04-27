@@ -425,13 +425,15 @@
 
 			if (effectiveHeader) {
 				// Section active → settle into a puff cloud around the header.
-				// One-shot, no reform. Each new active section just retargets to
-				// a fresh cloud at that section's position.
+				// Generous duration + wide stagger so particles drift in like a
+				// flowing cloud instead of a synchronized snap.
 				currentPhase = 'underline';
 				const rect = effectiveHeader.getBoundingClientRect();
 				const biasX = parseFloat(effectiveHeader.dataset.particleBiasX ?? '0');
 				const targets = generatePuffCloud(rect, TOTAL_N, scrollY, biasX);
-				retargetGroup(allParticles, targets, now, wasHero ? 1500 : 900, isHover ? 200 : 250);
+				const duration = wasHero ? 1700 : 1400;
+				const stagger = isHover ? 500 : 600;
+				retargetGroup(allParticles, targets, now, duration, stagger);
 			} else {
 				// No active section — return to hero.
 				currentPhase = 'hero';
