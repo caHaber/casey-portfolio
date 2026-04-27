@@ -11,10 +11,16 @@
 
 	const ctx = getParticleContext();
 
+	// Mobile detection — particles render fully formed (skip the mouse-driven
+	// fly-in), use the site's link blue, and run at much lower density so each
+	// glyph pixel isn't saturated with overlapping dots in the smaller viewport.
+	const _isMobile =
+		typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+
 	// ── Constants ──
-	const HERO_N = 80_000;
-	const BIO_N = 115_000;
-	const HAND_N = 10_000;
+	const HERO_N = _isMobile ? 30_000 : 80_000;
+	const BIO_N = _isMobile ? 55_000 : 115_000;
+	const HAND_N = _isMobile ? 5_000 : 10_000;
 	const TOTAL_N = HERO_N + BIO_N + HAND_N;
 	const MOUSE_RADIUS = 130;
 	const PULSE_RADIUS = MOUSE_RADIUS * 1.2;
@@ -25,6 +31,12 @@
 	const HERO_POINT_MIN = 5.0;
 	const HERO_POINT_MAX = 16.0;
 	const RADIUS_SQ = MOUSE_RADIUS * MOUSE_RADIUS;
+
+	const isMobile = _isMobile;
+	// Site link blue (#2b5c8a) — used to recolor hero + bio particles on mobile.
+	const MOBILE_R = 0x2b / 255;
+	const MOBILE_G = 0x5c / 255;
+	const MOBILE_B = 0x8a / 255;
 
 	const HERO_TEXT: Omit<TextRasterOptions, 'canvasWidth' | 'canvasHeight' | 'centerX' | 'centerY'> =
 		{
@@ -43,8 +55,10 @@
 	// ── GPU buffers & material ──
 	const buffers = createParticleBuffers(TOTAL_N);
 	const material = createHeroMaterial(PULSE_RADIUS);
-	material.uniforms.uPointSizeMin.value = HERO_POINT_MIN;
-	material.uniforms.uPointSizeMax.value = HERO_POINT_MAX;
+	// Mobile shrinks the size range so glyph strokes don't fuzz outward from
+	// over-sized point sprites. Desktop keeps the original chunky sprites.
+	material.uniforms.uPointSizeMin.value = _isMobile ? 2.5 : HERO_POINT_MIN;
+	material.uniforms.uPointSizeMax.value = _isMobile ? 6.0 : HERO_POINT_MAX;
 	const pointsMesh = new Points(buffers.geometry, material);
 	// Disable frustum culling: the geometry's bounding sphere is computed once
 	// from initial positions, but particles fly freely and the mesh is shifted
@@ -251,9 +265,15 @@
 
 		// Bio text — left-aligned below hero, word-wrapped. Larger font + medium
 		// weight so glyph strokes survive the size-pulse trough; wider column
-		// so the bigger letters don't wrap into too many short lines.
-		const bioFontSize = Math.round(Math.min(W, H) * 0.034);
-		const bioMaxW = Math.min(620, Math.round(W * 0.55));
+		// so the bigger letters don't wrap into too many short lines. The
+		// `Math.min(W,H)` formula collapses to a tiny 13px on mobile portrait,
+		// so mobile gets a viewport-width-driven floor instead.
+		const bioFontSize = isMobile
+			? Math.max(18, Math.round(W * 0.05))
+			: Math.round(Math.min(W, H) * 0.034);
+		const bioMaxW = isMobile
+			? Math.round(W * 0.88)
+			: Math.min(620, Math.round(W * 0.55));
 		const bioY = heroMaxY + Math.round(H * 0.06);
 		const bioPixels = rasterizeBio(
 			BIO_BLURB,
@@ -284,21 +304,41 @@
 		currentPhase = 'hero';
 		activeHeaderKey = null;
 
+		// On mobile we skip the mouse-driven intro fly: spawn each particle
+		// already at its glyph position, recolor to the site link blue, and
+		// pre-trigger with initialHome shifted off-target so the "arrived at
+		// initial home" reset path can't fire and drop the particle to idle dim.
+		const settleMobile = (p: Particle, target: Point) => {
+			p.cr = MOBILE_R;
+			p.cg = MOBILE_G;
+			p.cb = MOBILE_B;
+			p.triggered = true;
+			p.flyStart = -INTRO_FLY * 2;
+			p.initialHomeX = target.x + 1e6;
+			p.initialHomeY = target.y + 1e6;
+		};
+
 		// Create hero particles — zero noise for readability
 		heroParticles = Array.from({ length: HERO_N }, (_, i) => {
 			const target = heroPixels[i % heroPixels.length];
-			const p = makeParticle(Math.random() * W, Math.random() * H, target, target.x / W, INTRO_FLY);
+			const sx = isMobile ? target.x : Math.random() * W;
+			const sy = isMobile ? target.y : Math.random() * H;
+			const p = makeParticle(sx, sy, target, target.x / W, INTRO_FLY);
 			p.offsetX = 0;
 			p.offsetY = 0;
+			if (isMobile) settleMobile(p, target);
 			return p;
 		});
 
 		// Create bio particles — clean like the hand, slightly larger
 		bioParticles = Array.from({ length: BIO_N }, (_, i) => {
 			const target = bioPixels[i % bioPixels.length];
-			const p = makeParticle(Math.random() * W, Math.random() * H, target, target.x / W, INTRO_FLY);
+			const sx = isMobile ? target.x : Math.random() * W;
+			const sy = isMobile ? target.y : Math.random() * H;
+			const p = makeParticle(sx, sy, target, target.x / W, INTRO_FLY);
 			p.offsetX = 0;
 			p.offsetY = 0;
+			if (isMobile) settleMobile(p, target);
 			return p;
 		});
 
@@ -330,21 +370,23 @@
 		allParticles = [...heroParticles, ...bioParticles, ...handParticles];
 		buffers.uploadInitial(allParticles);
 
-		// Make all text particles uniformly small for crisp readability
+		// Make all text particles uniformly small for crisp readability. Mobile
+		// runs at a tighter shader size range (2.5–6 vs 5–16), so the
+		// per-particle scales here are picked to land glyph strokes around
+		// 3–4px and avoid fuzz from over-sized point sprites.
 		const sizeAttr = buffers.geometry.getAttribute('pointSizeScale');
-		// Hero: tight and uniform
+		const heroScale = isMobile ? 0.35 : 0.08;
+		const bioScale = isMobile ? 0.45 : 0.08;
+		const handScale = isMobile ? 0.25 : 0.05;
 		for (let i = 0; i < HERO_N; i++) {
-			(sizeAttr as any).setX(i, 0.08);
+			(sizeAttr as any).setX(i, heroScale);
 		}
-		// Bio: small dots + high density read as crisp letterforms. Slight bump
-		// from absolute-min so glyphs hold up at the trough of the size pulse.
 		for (let i = 0; i < BIO_N; i++) {
-			(sizeAttr as any).setX(HERO_N + i, 0.08);
+			(sizeAttr as any).setX(HERO_N + i, bioScale);
 		}
-		// Hand: smallest, tightest
 		const handStart = HERO_N + BIO_N;
 		for (let i = 0; i < HAND_N; i++) {
-			(sizeAttr as any).setX(handStart + i, 0.05);
+			(sizeAttr as any).setX(handStart + i, handScale);
 		}
 		sizeAttr.needsUpdate = true;
 
@@ -461,7 +503,8 @@
 			}
 		}
 
-		buffers.uploadFrame(allParticles, now, 1);
+		// Mobile uses settled alpha (no twinkle) so the text reads cleanly.
+		buffers.uploadFrame(allParticles, now, isMobile ? 0 : 1);
 	});
 
 	// ── Event handlers ──
