@@ -70,7 +70,7 @@
 		title="GitHub"
 	></a>
 	<a
-		href="https://linkedin.com/in/cahaber"
+		href="https://www.linkedin.com/in/casey-haber-143716b2"
 		target="_blank"
 		rel="noopener noreferrer"
 		aria-label="LinkedIn"

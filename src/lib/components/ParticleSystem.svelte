@@ -369,10 +369,9 @@
 		// ── Header tracking: hover takes priority over scroll position ──
 		const viewH = $size.height;
 		const scrollHeader = findActiveHeader(viewH);
-		const hoveredHeader = ctx.hoveredHeader;
-		const effectiveHeader = hoveredHeader ?? scrollHeader;
+		const effectiveHeader = scrollHeader;
 		const effectiveKey = effectiveHeader?.getAttribute('data-particle-header') ?? null;
-		const isHover = hoveredHeader !== null;
+		const isHover = effectiveHeader !== null;
 
 		if (effectiveKey !== activeHeaderKey) {
 			const wasHero = currentPhase === 'hero';
