@@ -408,12 +408,16 @@
 		const scrollY = window.scrollY;
 		pointsMesh.position.y = -scrollY;
 
-		// ── Header tracking: hover takes priority over scroll position ──
+		// ── Header tracking: hover takes priority over scroll position. ──
+		// ProjectCard's onmouseenter calls ctx.setHovered(imageEl), so a hovered
+		// card overrides whatever the scroll-derived "active" header was, and
+		// unhover falls back to scroll.
 		const viewH = $size.height;
 		const scrollHeader = findActiveHeader(viewH);
-		const effectiveHeader = scrollHeader;
+		const hoveredHeader = ctx.hoveredHeader;
+		const effectiveHeader = hoveredHeader ?? scrollHeader;
 		const effectiveKey = effectiveHeader?.getAttribute('data-particle-header') ?? null;
-		const isHover = effectiveHeader !== null;
+		const isHover = hoveredHeader !== null;
 
 		if (effectiveKey !== activeHeaderKey) {
 			const wasHero = currentPhase === 'hero';
