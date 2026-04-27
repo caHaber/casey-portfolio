@@ -52,17 +52,31 @@
 </div>
 
 <nav class="sidebar-nav" aria-label="Social links">
-	<a href="https://github.com/cahaber" target="_blank" rel="noopener noreferrer" aria-label="GitHub"></a>
-	<a href="mailto:haber.casey@gmail.com" aria-label="Email"></a>
 	<a
 		href="/resume.pdf"
 		download="casey-haber-resume.pdf"
 		aria-label="Open resume"
+		title="View resume"
 		onclick={(e) => {
 			e.preventDefault();
 			resumeOpen = true;
 		}}
 	></a>
+	<a
+		href="https://github.com/cahaber"
+		target="_blank"
+		rel="noopener noreferrer"
+		aria-label="GitHub"
+		title="GitHub"
+	></a>
+	<a
+		href="https://linkedin.com/in/cahaber"
+		target="_blank"
+		rel="noopener noreferrer"
+		aria-label="LinkedIn"
+		title="LinkedIn"
+	></a>
+	<a href="mailto:haber.casey@gmail.com" aria-label="Email" title="Email Casey"></a>
 </nav>
 
 {#if resumeOpen}

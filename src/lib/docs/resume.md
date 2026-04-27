@@ -19,7 +19,7 @@ I'm a platform engineer with a decade of leading data visualization experiences 
 | -------------------------- | ----------------------------------------------------------------------------- |
 | **Visualization**          | D3.js, Vega & Vega-Lite, visx, Observable Plot, SVG, Canvas, WebGL (Three.js) |
 | **Languages / Frameworks** | TypeScript, JavaScript, Python, React, SvelteKit, Redux, Node.js              |
-| **Exploring**              | GenUI, WebAssembly, AI/ML tooling                                             |
+| **Exploring**              | GenUI, WebAssembly, AI/ML tooling, DuckDB                                     |
 
 
 ---

@@ -13,7 +13,7 @@
 
 	// ── Constants ──
 	const HERO_N = 80_000;
-	const BIO_N = 75_000;
+	const BIO_N = 115_000;
 	const HAND_N = 10_000;
 	const TOTAL_N = HERO_N + BIO_N + HAND_N;
 	const MOUSE_RADIUS = 130;
@@ -200,17 +200,23 @@
 
 	/**
 	 * Soft puff cloud around a target rect (in document coords). Triangular
-	 * distribution along each axis → particles peak near the header center and
-	 * thin out toward the edges, giving an organic dispersed look.
+	 * distribution along each axis — particles peak near the rect center and
+	 * thin toward the edges. `biasX` shifts the cloud's horizontal center so
+	 * the cloud can lean slightly toward an adjacent area (e.g. text beside
+	 * an image) while still being primarily centered on the rect.
 	 */
-	function generatePuffCloud(rect: DOMRect, count: number, scrollY: number): Point[] {
-		const cx = rect.left + rect.width / 2;
+	function generatePuffCloud(
+		rect: DOMRect,
+		count: number,
+		scrollY: number,
+		biasX = 0
+	): Point[] {
+		const cx = rect.left + rect.width / 2 + biasX;
 		const cy = rect.top + rect.height / 2 + scrollY;
-		const spreadX = rect.width / 2 + 90;
-		const spreadY = rect.height / 2 + 70;
+		const spreadX = rect.width / 2 + 30;
+		const spreadY = rect.height / 2 + 40;
 		const points: Point[] = [];
 		for (let i = 0; i < count; i++) {
-			// Sum of two uniforms − 1 → triangular dist on [-1, 1] peaking at 0.
 			const u1 = Math.random() + Math.random() - 1;
 			const u2 = Math.random() + Math.random() - 1;
 			points.push({ x: cx + u1 * spreadX, y: cy + u2 * spreadY });
@@ -243,10 +249,11 @@
 			if (p.y > heroMaxY) heroMaxY = p.y;
 		}
 
-		// Bio text — left-aligned below hero, word-wrapped. Slightly larger
-		// font + medium weight so glyph strokes survive the size-pulse trough.
-		const bioFontSize = Math.round(Math.min(W, H) * 0.028);
-		const bioMaxW = Math.min(540, Math.round(W * 0.5));
+		// Bio text — left-aligned below hero, word-wrapped. Larger font + medium
+		// weight so glyph strokes survive the size-pulse trough; wider column
+		// so the bigger letters don't wrap into too many short lines.
+		const bioFontSize = Math.round(Math.min(W, H) * 0.034);
+		const bioMaxW = Math.min(620, Math.round(W * 0.55));
 		const bioY = heroMaxY + Math.round(H * 0.06);
 		const bioPixels = rasterizeBio(
 			BIO_BLURB,
@@ -329,10 +336,10 @@
 		for (let i = 0; i < HERO_N; i++) {
 			(sizeAttr as any).setX(i, 0.08);
 		}
-		// Bio: small dots + high density read as crisp letterforms. Bigger points
-		// blob neighbors together and smear the glyph shapes.
+		// Bio: small dots + high density read as crisp letterforms. Slight bump
+		// from absolute-min so glyphs hold up at the trough of the size pulse.
 		for (let i = 0; i < BIO_N; i++) {
-			(sizeAttr as any).setX(HERO_N + i, 0.0);
+			(sizeAttr as any).setX(HERO_N + i, 0.08);
 		}
 		// Hand: smallest, tightest
 		const handStart = HERO_N + BIO_N;
@@ -377,7 +384,8 @@
 				// a fresh cloud at that section's position.
 				currentPhase = 'underline';
 				const rect = effectiveHeader.getBoundingClientRect();
-				const targets = generatePuffCloud(rect, TOTAL_N, scrollY);
+				const biasX = parseFloat(effectiveHeader.dataset.particleBiasX ?? '0');
+				const targets = generatePuffCloud(rect, TOTAL_N, scrollY, biasX);
 				retargetGroup(allParticles, targets, now, wasHero ? 1500 : 900, isHover ? 200 : 250);
 			} else {
 				// No active section — return to hero.

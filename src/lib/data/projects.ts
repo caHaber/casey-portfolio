@@ -22,15 +22,15 @@ export const experience: ExperienceSection[] = [
 			{
 				title: 'Viz Platform Charts',
 				description:
-					"Designed and built @atlassian/viz-platform-charts from the ground up — Atlassian's primary data visualization library, now serving 28+ engineering teams and 4M MAU. Defined a novel slot-based React composition model and opened the library to company-wide contribution through an AI-assisted authoring path.",
-				image: '/images/projects/viz-platform.svg',
+					"Designed and built @atlassian/viz-platform-charts from the ground up. Atlassian's primary data visualization library, serving 28+ engineering teams and 4M MAU. A novel slot-based React composition model lets teams assemble custom chart experiences — opened to company-wide contribution through a structured model and an AI-assisted authoring path.",
+				image: '/images/projects/viz-platform.webp',
 				href: 'https://www.atlassian.com/platform/analytics/what-is-atlassian-analytics#why-use-atlassian-analytics',
 				tags: ['React', 'TypeScript', 'D3.js']
 			},
 			{
 				title: 'Home Dashboards',
 				description:
-					'Led the visualization surfaces powering Atlassian Home dashboards — the central hub where users see activity and metrics across all Atlassian products.',
+					'Led the visualization surfaces powering Atlassian Home dashboards — the central hub where users see activity and metrics across all Atlassian products. Built on the viz platform charts library.',
 				image: '/images/projects/home-dashboards.png',
 				href: 'https://community.developer.atlassian.com/t/introducing-atlassian-home-dashboards/91079',
 				tags: ['React', 'TypeScript', 'Dashboards']
@@ -46,7 +46,7 @@ export const experience: ExperienceSection[] = [
 			{
 				title: 'Table Chart Rebuild',
 				description:
-					"Tech-led the table chart rebuild — the platform's most-used widget — shipping features like sparklines and auto-heatmaps that weren't possible under the legacy architecture.",
+					"Tech-led the table chart rebuild — Atlassian Analytics' most-used chart — and the creation of custom mini-visualizations like sparklines and auto-heatmaps, features that weren't possible under the legacy architecture.",
 				image: '/images/projects/table-chart.gif',
 				href: 'https://community.atlassian.com/forums/Atlassian-Analytics-articles/We-re-introducing-a-new-table-chart-experience/ba-p/2450718',
 				tags: ['React', 'TypeScript', 'Data tables']
@@ -61,7 +61,7 @@ export const experience: ExperienceSection[] = [
 			{
 				title: 'Vega-Lite Visualization Library',
 				description:
-					"Architected Chartio's Vega-Lite-based visualization library — designed the grammar layer, authoring experience, and chart catalog powering thousands of customer dashboards.",
+					"Architected Chartio's Vega-Lite-based visualization library — designed the grammar layer, authoring experience, and chart catalog.",
 				image: '/images/projects/chartio-vega.png',
 				href: 'https://web.archive.org/web/20210423171127/https://chartio.com/blog/a-deeper-look-into-chartios-visualization-library/',
 				tags: ['Vega-Lite', 'JavaScript', 'SVG']
@@ -69,7 +69,7 @@ export const experience: ExperienceSection[] = [
 			{
 				title: 'Sparklines & New Chart Types',
 				description:
-					'Shipped new chart types including sparklines and an all-new chart catalog, expanding the range of visualizations available to Chartio customers.',
+					'Shipped new chart types including sparklines and an all-new chart catalog for Chartio customers.',
 				image: '/images/projects/chartio-sparklines.png',
 				href: 'https://web.archive.org/web/20220926150706/https://chartio.com/blog/new-chart-type-sparklines/',
 				tags: ['Vega-Lite', 'JavaScript', 'Chart catalog']
@@ -77,7 +77,7 @@ export const experience: ExperienceSection[] = [
 			{
 				title: 'How We Feel',
 				description:
-					'Built a public data visualization project for pandemic user-generated data, in partnership with the How We Feel app — turning self-reported health data into actionable visual insights.',
+					'A public data visualization built in partnership with the How We Feel app — pandemic user-generated data turned into shared insight.',
 				image: '/images/projects/how-we-feel.png',
 				href: 'https://web.archive.org/web/20210801083324/https://chartio.com/blog/how-we-feel-app-aims-to-combat-coronavirus-with-user-generated-data/',
 				tags: ['Data visualization', 'Public health', 'Vega-Lite']
@@ -92,13 +92,13 @@ export const experience: ExperienceSection[] = [
 			{
 				title: 'Code Repository Analysis Tool',
 				description:
-					'Co-authored best-paper winner at VDA 2020: a visualization tool for analyzing the suitability of software libraries via their code repositories. Also inventor on US Patent 11,487,538.',
+					'Co-authored best-paper winner at VDA 2020 (Haber & Gove): a visualization tool for analyzing the suitability of software libraries via their code repositories. Inventor on US Patent 11,487,538.',
 				image: '/images/projects/code-repo-analysis.png',
 				href: 'https://twosixtech.com/choosing-open-source-libraries-and-analyzing-risks/',
 				tags: ['D3.js', 'Research', 'Patent', 'ML']
 			},
 			{
-				title: 'Stack Overflow Tag Visualization',
+				title: 'Visualizing Programming Behaviors with Stack Overflow',
 				description:
 					'Designed and shipped an interactive exploration of developer tag co-occurrence on Stack Overflow — revealing how programming communities cluster and evolve.',
 				image: '/images/projects/so-image.png',

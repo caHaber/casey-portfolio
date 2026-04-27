@@ -5,25 +5,31 @@
 	let { project, reversed = false }: { project: Project; reversed?: boolean } = $props();
 
 	const ctx = getParticleContext();
-	let cardEl: HTMLDivElement;
+	let imageEl: HTMLAnchorElement;
 
-	const onenter = () => ctx.setHovered(cardEl);
+	// Particle cloud follows the image rect (with a slight bias toward the text
+	// side, encoded in data-particle-bias-x). Hover area stays the whole card.
+	const onenter = () => ctx.setHovered(imageEl);
 	const onleave = () => {
-		// Only clear if we're still the hovered one (avoids racing two cards' enter/leave).
-		if (ctx.hoveredHeader === cardEl) ctx.setHovered(null);
+		if (ctx.hoveredHeader === imageEl) ctx.setHovered(null);
 	};
 </script>
 
 <div
 	class="card"
 	class:reversed
-	bind:this={cardEl}
-	data-particle-header={project.title}
 	onmouseenter={onenter}
 	onmouseleave={onleave}
 	role="group"
 >
-	<a href={project.href} target="_blank" rel="noopener noreferrer" class="image-link">
+	<a
+		href={project.href}
+		target="_blank"
+		rel="noopener noreferrer"
+		class="image-link"
+		bind:this={imageEl}
+		data-particle-header={project.title}
+	>
 		<img src={project.image} alt={project.title} loading="lazy" />
 	</a>
 
