@@ -1,6 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
 	import { Canvas } from '@threlte/core';
 	import Scene from '$lib/components/Scene.svelte';
 	import SidebarScene from '$lib/components/SidebarScene.svelte';
@@ -30,7 +29,7 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </svelte:head>
 
 <div class="page-wrapper">
